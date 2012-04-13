@@ -1,6 +1,7 @@
 module Test where
 
 import Test.QuickCheck
+import Debug.Trace
 import Arbitrary
 
 import Data.Map (Map)
@@ -19,9 +20,15 @@ bags = do
   let listNum = map (\(x, Positive y) -> (x, y)) list
   return (Map.fromList listNum)
 
-prop_PrintParse :: [Term] -> Bool
-prop_PrintParse t  =
+prop_printParse :: [Term] -> Bool
+prop_printParse t  =
   let str = showTerms t in
     case parse Parser.term "<quickcheck>" str of
-      Left  a  -> False
+      Left err -> False
       Right t' -> t == t'
+
+props = [
+    prop_printParse
+  ]
+
+main = sequence_ (map quickCheck props)
