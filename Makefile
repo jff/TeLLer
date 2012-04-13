@@ -1,2 +1,6 @@
-linear-logic: linear-logic.hs Bag.hs Test.hs
+.PHONY: all linear-logic
+
+all: linear-logic
+
+linear-logic:
 	ghc --make linear-logic.hs
