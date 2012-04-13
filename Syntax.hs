@@ -23,4 +23,8 @@ data Term
      | One
      | Zero
 
-  deriving Show
+  deriving (Show, Eq)
+
+{-!
+deriving instance Arbitrary Term
+!-}
