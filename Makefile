@@ -1,4 +1,4 @@
-.PHONY: all linear-logic
+.PHONY: all clean linear-logic
 
 all: linear-logic
 
@@ -7,3 +7,6 @@ linear-logic: Arbitrary.hs
 
 Arbitrary.hs: Syntax.hs
 	derive -mArbitrary -iTest.QuickCheck -iSyntax -o $@ $^
+
+clean:
+	rm *.o *.hi
