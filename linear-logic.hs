@@ -1,5 +1,7 @@
 module Main where
 
 import Bag
+import Syntax
+import Parser
 
-main = undefined
+main = getLine >>= run term >> main
