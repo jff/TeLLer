@@ -9,13 +9,14 @@ import Text.ParserCombinators.Parsec
 
 term :: Parser [Term]
 term = do spaces
-          terms <- sepBy1 expr (optional (symbol "."))
+          terms <- sepEndBy expr (optional (symbol "."))
           eof
           return terms
 
 atom = identifier `as` Atom <?> "atomic formula"
 
 atomish =  atom
+       <|> unit
        <|> parens expr
 
 negation = atomish >>= negs
@@ -49,6 +50,10 @@ expt     = ofcourse <|> whynot <|> negation
 ofcourse = symbol "!" >> expt `as` OfCourse
 whynot   = symbol "?" >> expt `as` WhyNot
 
+unit =  symbol "#"  `giving` Top
+    <|> symbol "%"  `giving` Bottom
+    <|> symbol "1"  `giving` One
+    <|> symbol "0"  `giving` Zero
 
 -- Useful Combinators --
 
@@ -74,6 +79,7 @@ run' p input f
             Right x  -> f x
 
 run p input = run' p input print
+
 
 as :: Parser a -> (a -> b) -> Parser b
 as = flip fmap
