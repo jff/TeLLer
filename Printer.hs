@@ -12,20 +12,20 @@ showsTerm :: Int -> Term -> ShowS
 showsTerm d (Atom s) = showString s
 
 showsTerm d (Not t)  = showParen (d > prec) $
-    showsTerm (prec+1) t . showString "^"
+    showsTerm prec t . showString "^"
   where prec = 8
 
 showsTerm d (OfCourse t)  = showParen (d > prec) $
-    showString "!" . showsTerm (prec+1) t
+    showString "!" . showsTerm prec t
   where prec = 7
 
 showsTerm d (WhyNot t)  = showParen (d > prec) $
-    showString "?" . showsTerm (prec+1) t
+    showString "?" . showsTerm prec t
   where prec = 7
 
 
-showsTerm d (l :*: r)  = showsTermOp 6 "*"  d (l, r)
-showsTerm d (l :$: r)  = showsTermOp 6 "$"  d (l, r)
+showsTerm d (l :*:  r) = showsTermOp 6 "*"  d (l, r)
+showsTerm d (l :$:  r) = showsTermOp 6 "$"  d (l, r)
 showsTerm d (l :-@: r) = showsTermOp 2 "  -@  " d (l, r)
 
 showsTerm d (l :&: r) = showsTermOp 4 " & " d (l, r)
@@ -33,8 +33,8 @@ showsTerm d (l :+: r) = showsTermOp 4 " + " d (l, r)
 
 showsTerm d Top    = showString "#"
 showsTerm d Bottom = showString "%"
-showsTerm d One  = showString "1"
-showsTerm d Zero = showString "0"
+showsTerm d One    = showString "1"
+showsTerm d Zero   = showString "0"
 
 
 showTerms ls = showsTerms ls ""
