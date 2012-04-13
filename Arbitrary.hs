@@ -3,36 +3,43 @@ import Test.QuickCheck
 import Syntax
 
 identifier = listOf1 $ elements ['a'..'z']
- 
+
+genTerm 0 = frequency [
+    (5, identifier `as` Atom),
+    (1, elements [Top, Bottom, One, Zero])
+  ]
+
+genTerm n | n > 0 = oneof [
+    genTerm 0, 
+    genBinaryTerm (n `div` 2),
+    genUnaryTerm  (n `div` 2)
+  ]
+
+genBinaryTerm n = do
+  connective <- elements [(:*:), (:$:), (:-@:), (:&:), (:+:)]
+  l <- genTerm n
+  r <- genTerm n
+  return (l `connective` r)
+
+genUnaryTerm n = do
+  connective <- elements [Not, OfCourse, WhyNot]
+  u <- genTerm n
+  return (connective u)
+
 instance Arbitrary Term where
-        arbitrary
-          = do x <- choose (0 :: Int, 12)
-               case x of
-                   0 -> do x1 <- identifier
-                           return (Atom x1)
-                   1 -> do x1 <- arbitrary
-                           return (Not x1)
-                   2 -> do x1 <- arbitrary
-                           x2 <- arbitrary
-                           return ((:*:) x1 x2)
-                   3 -> do x1 <- arbitrary
-                           x2 <- arbitrary
-                           return ((:$:) x1 x2)
-                   4 -> do x1 <- arbitrary
-                           x2 <- arbitrary
-                           return ((:-@:) x1 x2)
-                   5 -> do x1 <- arbitrary
-                           x2 <- arbitrary
-                           return ((:&:) x1 x2)
-                   6 -> do x1 <- arbitrary
-                           x2 <- arbitrary
-                           return ((:+:) x1 x2)
-                   7 -> do x1 <- arbitrary
-                           return (OfCourse x1)
-                   8 -> do x1 <- arbitrary
-                           return (WhyNot x1)
-                   9 -> return Top
-                   10 -> return Bottom
-                   11 -> return One
-                   12 -> return Zero
-                   _ -> error "FATAL ERROR: Arbitrary instance, logic bug"
+  arbitrary = sized $ \n -> genTerm n
+
+  shrink (a :*:  b) = [a, b]
+  shrink (a :$:  b) = [a, b]
+  shrink (a :-@: b) = [a, b]
+  shrink (a :&:  b) = [a, b]
+  shrink (a :+:  b) = [a, b]
+
+  shrink (Not      a) = [a]
+  shrink (WhyNot   a) = [a]
+  shrink (OfCourse a) = [a]
+
+  shrink _ = []
+
+as :: Gen a -> (a -> b) -> Gen b
+as = flip fmap
