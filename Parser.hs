@@ -16,12 +16,20 @@ as = flip fmap
 construct :: Parser b -> (a -> a -> a) -> Parser (a -> a -> a)
 construct p c = p >> return c
 
-symbol s = string s
+despace p = do x <- p
+               spaces
+               return x
 
-term :: Parser Term
-term = expr
+symbol s   = despace (string s)
+identifier = despace (many1 letter)
 
-atom = many1 letter `as` Atom <?> "atomic formula"
+term :: Parser [Term]
+term = do spaces
+          terms <- sepBy1 expr (optional (symbol "."))
+          eof
+          return terms
+
+atom = identifier `as` Atom <?> "atomic formula"
 
 parens p = do symbol "("
               inner <- p
