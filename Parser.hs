@@ -22,21 +22,19 @@ term :: Parser Term
 term = expr
 
 atom = many1 letter `as` Atom <?> "atomic formula"
-negation = symbol "~" >> term `as` Not
 
 parens p = do symbol "("
               inner <- p
               symbol ")"
               return inner
 
-atomish =  parens expr
-       <|> atom
-       <|> negation
+atomish =  atom
+       <|> parens expr
 
 expr  = expr1 `chainr1` lolly
 expr1 = expr2 `chainr1` add
 expr2 = expr3 `chainr1` mul
-expr3 = atomish
+expr3 = expt
 
 mul    = tensor <|> par
 tensor = symbol "*" `construct` (:*:)
@@ -46,4 +44,8 @@ add    = with <|> plus
 with   = symbol "&" `construct` (:&:)
 plus   = symbol "+" `construct` (:+:)
 
-lolly  = symbol "-@"  `construct` (:-@:)
+lolly  = symbol "-@" `construct` (:-@:)
+
+expt     = ofcourse <|> whynot <|> atomish
+ofcourse = symbol "!" >> expt `as` OfCourse
+whynot   = symbol "?" >> expt `as` WhyNot
