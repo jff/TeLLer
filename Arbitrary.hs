@@ -2,12 +2,13 @@ module Arbitrary where
 import Test.QuickCheck
 import Syntax
 
+identifier = listOf1 $ elements ['a'..'z']
  
 instance Arbitrary Term where
         arbitrary
           = do x <- choose (0 :: Int, 12)
                case x of
-                   0 -> do x1 <- arbitrary
+                   0 -> do x1 <- identifier
                            return (Atom x1)
                    1 -> do x1 <- arbitrary
                            return (Not x1)
