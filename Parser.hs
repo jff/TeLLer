@@ -67,11 +67,13 @@ parens p = do symbol "("
 
 -- Utility Functions --
 
-run :: Show a => Parser a -> String -> IO ()
-run p input
-        = case (parse p "" input) of
+run' :: Parser a -> String -> (a -> IO ()) -> IO ()
+run' p input f
+        = case (parse p "<unknown>" input) of
             Left err -> putStr "parse error at " >> print err
-            Right x  -> print x
+            Right x  -> f x
+
+run p input = run' p input print
 
 as :: Parser a -> (a -> b) -> Parser b
 as = flip fmap
