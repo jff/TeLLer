@@ -28,7 +28,7 @@ negs x = do
     Nothing -> return x
 
 
-expr  = expr1 `chainr1` lolly
+expr  = expr1 `chainr1` imp
 expr1 = expr2 `chainr1` add
 expr2 = expr3 `chainr1` mul
 expr3 = expt
@@ -38,7 +38,10 @@ mul    = tensor <|> par
 tensor = symbol "*" `construct` (:*:)
 par    = symbol "$" `construct` (:$:)
 
-lolly  = symbol "-@" `construct` (:-@:)
+
+imp    = symbol "-"  >> (lolly <|> arrow)
+lolly  = symbol "@" `construct` (:-@:)
+arrow  = symbol "!" `construct` (\l r -> OfCourse (l :-@: r))
 
 
 add    = with <|> plus
