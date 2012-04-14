@@ -1,4 +1,4 @@
-module Parser where
+module Parser(term, run, run') where
 
 import Syntax
 
@@ -72,13 +72,13 @@ parens p = do symbol "("
 
 -- Utility Functions --
 
-run' :: Parser a -> String -> (a -> IO ()) -> IO ()
-run' p input f
+run' :: Parser a -> (a -> IO ()) -> String -> IO ()
+run' p f input
         = case (parse p "<unknown>" input) of
             Left err -> putStr "parse error at " >> print err
             Right x  -> f x
 
-run p input = run' p input print
+run p input = run' p print input
 
 
 as :: Parser a -> (a -> b) -> Parser b
