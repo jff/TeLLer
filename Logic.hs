@@ -4,45 +4,78 @@ import Arbitrary
 
 import Syntax
 
--- Simplify Negations --
+simplify :: Term -> Term
+simplify = unexpt . dedual
+
+
+-- Normalize Dualities --
 
 -- Negation Involution
-simplify (Not (Not t))    = simplify t
+dedual (Not (Not t))    = dedual t
 
 -- DeMorgans Laws
-simplify (Not (a :*: b))  = neg a :$:  neg b
-simplify (Not (a :$: b))  = neg a :*:  neg b
-simplify (Not (a :-@: b)) = neg a :-@: neg b
-simplify (Not (a :&: b))  = neg a :+:  neg b
-simplify (Not (a :+: b))  = neg a :&:  neg b
+dedual (Not (a :*: b))  = neg a :$:  neg b
+dedual (Not (a :$: b))  = neg a :*:  neg b
+dedual (Not (a :-@: b)) = neg a :-@: neg b
+dedual (Not (a :&: b))  = neg a :+:  neg b
+dedual (Not (a :+: b))  = neg a :&:  neg b
 
 -- Exponential Dualities
-simplify (Not (OfCourse a)) = simplify (WhyNot   (Not a))
-simplify (Not (WhyNot a))   = simplify (OfCourse (Not a))
+dedual (Not (OfCourse a)) = dedual (WhyNot   (Not a))
+dedual (Not (WhyNot a))   = dedual (OfCourse (Not a))
 
 -- Unit Dualities
-simplify (Not One)    = Bottom
-simplify (Not Zero)   = Top
-simplify (Not Bottom) = One
-simplify (Not Top)    = Zero
+dedual (Not One)    = Bottom
+dedual (Not Zero)   = Top
+dedual (Not Bottom) = One
+dedual (Not Top)    = Zero
 
 -- Passthrough
-simplify (a :*: b)  = simplify a :*:  simplify b
-simplify (a :$: b)  = simplify a :$:  simplify b
-simplify (a :-@: b) = simplify a :-@: simplify b
-simplify (a :&: b)  = simplify a :&:  simplify b
-simplify (a :+: b)  = simplify a :+:  simplify b
+dedual (a :*: b)  = dedual a :*:  dedual b
+dedual (a :$: b)  = dedual a :$:  dedual b
+dedual (a :-@: b) = dedual a :-@: dedual b
+dedual (a :&: b)  = dedual a :&:  dedual b
+dedual (a :+: b)  = dedual a :+:  dedual b
 
-simplify (OfCourse t) = OfCourse (simplify t)
-simplify (WhyNot t)   = WhyNot   (simplify t)
+dedual (OfCourse t) = OfCourse (dedual t)
+dedual (WhyNot t)   = WhyNot   (dedual t)
 
-simplify t = t
+dedual t = t
 
-neg t = simplify (Not t)
+neg t = dedual (Not t)
 
 
+-- Exponential Lattice --
+
+-- Digging
+unexpt (OfCourse (OfCourse a)) = unexpt (OfCourse a)
+unexpt (WhyNot   (WhyNot   a)) = unexpt (WhyNot   a)
+
+-- Reduction
+unexpt (OfCourse (WhyNot (OfCourse (WhyNot a)))) = unexpt (OfCourse (WhyNot a))
+unexpt (WhyNot (OfCourse (WhyNot (OfCourse a)))) = unexpt (WhyNot (OfCourse a))
+
+-- Action on Units
+unexpt (OfCourse (WhyNot One))      = One
+unexpt (WhyNot   (OfCourse Bottom)) = Bottom
+
+-- Passthrough
+unexpt (a :*: b)  = unexpt a :*:  unexpt b
+unexpt (a :$: b)  = unexpt a :$:  unexpt b
+unexpt (a :-@: b) = unexpt a :-@: unexpt b
+unexpt (a :&: b)  = unexpt a :&:  unexpt b
+unexpt (a :+: b)  = unexpt a :+:  unexpt b
+
+unexpt (Not a)      = Not (unexpt a)
+unexpt (OfCourse t) = OfCourse (unexpt t)
+unexpt (WhyNot t)   = WhyNot   (unexpt t)
+
+unexpt t = t
+
+-- Props --
 
 prop_simplify_idempotent x  =  simplify (simplify x) == simplify x
+
 prop_simplify_onlyNegativeAtoms x  =  check (simplify x)
   where check (Not (Atom _)) = True
         check (Not _)    = False
