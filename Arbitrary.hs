@@ -26,18 +26,20 @@ genUnaryTerm n = do
   u <- genTerm n
   return (connective u)
 
+-- This make take a very long time for large ASTs
+shrinkDeep op (a, b) = [a, b] ++ [ l `op` r | l <- shrink a, r <- shrink b]
+-- shrinkDeep op (a, b) = [a, b]
+
 instance Arbitrary Term where
   arbitrary = sized $ \n -> genTerm n
 
-  shrink (a :*:  b) = [a, b]
-  shrink (a :$:  b) = [a, b]
-  shrink (a :-@: b) = [a, b]
-  shrink (a :&:  b) = [a, b]
-  shrink (a :+:  b) = [a, b]
+  shrink (a :*:  b) = shrinkDeep (:*:) (a, b)
+  shrink (a :$:  b) = shrinkDeep (:$:) (a, b)
+  shrink (a :-@: b) = shrinkDeep (:-@:) (a, b)
+  shrink (a :&:  b) = shrinkDeep (:&:) (a, b)
+  shrink (a :+:  b) = shrinkDeep (:+:) (a, b)
 
-  shrink (Not      a) = [a]
-  shrink (WhyNot   a) = [a]
-  shrink (OfCourse a) = [a]
+  shrink (Atom s) = [Atom a | a <- shrink s, not (null a)]
 
   shrink _ = []
 
