@@ -26,9 +26,3 @@ prop_printParse t  =
     case parse Parser.term "<quickcheck>" str of
       Left err -> False
       Right t' -> t == t'
-
-props = [
-    prop_printParse
-  ]
-
-main = sequence_ (map quickCheck props)
