@@ -88,7 +88,7 @@ prop_simplify_onlyNegativeAtoms x  =  check (simplify x)
         check (WhyNot a)   = check a
         check _ = True
 
-prop_simplify_exponentialLattice x  =  check (simplify x)
+prop_simplify_inExponentialLattice x  =  check (simplify x)
   where check (OfCourse (WhyNot (OfCourse a))) = checkNonExp a
         check (WhyNot   (OfCourse (WhyNot a))) = checkNonExp a
         check (OfCourse (WhyNot a))   = checkNonExp a
