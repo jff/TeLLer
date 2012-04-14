@@ -1,4 +1,4 @@
-module Parser(term, run, run') where
+module Parser(term, run, run', tt) where
 
 import Syntax
 
@@ -39,9 +39,10 @@ tensor = symbol "*" `construct` (:*:)
 par    = symbol "$" `construct` (:$:)
 
 
-imp    = symbol "-"  >> (lolly <|> arrow)
-lolly  = symbol "@" `construct` (:-@:)
-arrow  = symbol "!" `construct` (\l r -> OfCourse (l :-@: r))
+imp   =  rlolly <|> (symbol "-"  >> (lolly <|> arrow))
+lolly  = symbol "@"  `construct` (:-@:)
+arrow  = symbol "!"  `construct` (\l r -> OfCourse (l :-@: r))
+rlolly = symbol "@-" `construct` flip (:-@:)
 
 
 add    = with <|> plus
@@ -83,6 +84,10 @@ run' p f input
 
 run p input = run' p print input
 
+tt :: String -> Term
+tt s = case parse term "<inline>" s of
+         Left err -> error (show err)
+         Right  x -> head x
 
 as :: Parser a -> (a -> b) -> Parser b
 as = flip fmap
