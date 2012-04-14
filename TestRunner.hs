@@ -11,8 +11,8 @@ data Test = forall a. (Testable a) => Test a
 
 tests :: [Test]
 tests = [
-    Test prop_pushNot_idempotent,
-    Test prop_pushNot_onlyNegativeAtoms,
+    Test prop_simplify_idempotent,
+    Test prop_simplify_onlyNegativeAtoms,
     Test prop_subbag_reflexive,
     Test prop_subbag_less,
     Test prop_subbag_more,
