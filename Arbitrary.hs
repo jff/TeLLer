@@ -41,6 +41,10 @@ instance Arbitrary Term where
 
   shrink (Atom s) = [Atom a | a <- shrink s, not (null a)]
 
+  shrink (Not  t)     = [Not       t' | t' <- shrink t]
+  shrink (OfCourse t) = [OfCourse  t' | t' <- shrink t]
+  shrink (WhyNot   t) = [WhyNot    t' | t' <- shrink t]
+
   shrink _ = []
 
 as :: Gen a -> (a -> b) -> Gen b

@@ -28,3 +28,11 @@ data Term
 {-!
 deriving instance Arbitrary Term
 !-}
+
+atomic :: Term -> Bool
+atomic (Atom _) = True
+atomic (Top)    = True
+atomic (Bottom) = True
+atomic (One)    = True
+atomic (Zero)   = True
+atomic _        = False

@@ -20,8 +20,8 @@ bags = do
   let listNum = map (\(x, Positive y) -> (x, y)) list
   return (Map.fromList listNum)
 
-prop_printParse :: [Term] -> Bool
-prop_printParse t  =
+prop_printParse_ident :: [Term] -> Bool
+prop_printParse_ident t  =
   let str = showTerms t in
     case parse Parser.term "<quickcheck>" str of
       Left err -> False
