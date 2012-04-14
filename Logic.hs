@@ -16,9 +16,10 @@ dedual (Not (Not t))    = dedual t
 -- DeMorgans Laws
 dedual (Not (a :*: b))  = neg a :$:  neg b
 dedual (Not (a :$: b))  = neg a :*:  neg b
-dedual (Not (a :-@: b)) = neg a :-@: neg b
 dedual (Not (a :&: b))  = neg a :+:  neg b
 dedual (Not (a :+: b))  = neg a :&:  neg b
+
+dedual (Not (a :-@: b)) = dedual a :*: neg b
 
 -- Exponential Dualities
 dedual (Not (OfCourse a)) = dedual (WhyNot   (Not a))
