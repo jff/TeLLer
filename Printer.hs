@@ -2,8 +2,8 @@ module Printer where
 
 import Syntax
 
-showsTermOp prec op d (l, r) = showParen (d > prec) $
-      showsTerm (prec+1) l . showString op . showsTerm (prec+1) r
+showsTermOp  prec op d (l, r) = showParen (d > prec) $
+      showsTerm (prec+1) l . showString op . showsTerm prec r
 
 showTerm :: Term -> String
 showTerm term = showsTerm 0 term ""
@@ -30,6 +30,7 @@ showsTerm d (l :-@: r) = showsTermOp 2 "  -@  " d (l, r)
 
 showsTerm d (l :&: r) = showsTermOp 4 " & " d (l, r)
 showsTerm d (l :+: r) = showsTermOp 4 " + " d (l, r)
+
 
 showsTerm d Top    = showString "#"
 showsTerm d Bottom = showString "%"
