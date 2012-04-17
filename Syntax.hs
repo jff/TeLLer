@@ -25,14 +25,13 @@ data Term
 
   deriving (Show, Eq)
 
-{-!
-deriving instance Arbitrary Term
-!-}
-
 atomic :: Term -> Bool
 atomic (Atom _) = True
-atomic (Top)    = True
-atomic (Bottom) = True
-atomic (One)    = True
-atomic (Zero)   = True
-atomic _        = False
+atomic t = unitary t
+
+unitary :: Term -> Bool
+unitary Top      = True
+unitary Bottom   = True
+unitary One      = True
+unitary Zero     = True
+unitary _        = False

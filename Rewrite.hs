@@ -1,4 +1,4 @@
-module Rewrite(rewrite, match) where
+module Rewrite(rewrite, rewrite', match) where
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -33,6 +33,7 @@ rewrite' rules t = recur (rewrite rules t)
         recur (a :-@: b)   = walk a :-@: walk b
         recur (a :&: b)    = walk a :&:  walk b
         recur (a :+: b)    = walk a :+:  walk b
+        recur t            = t
 
 matchbind :: (Term, Term) -> Term -> Maybe Term
 matchbind (pattern, replace) t = 
