@@ -1,50 +1,13 @@
 module Logic where
 
 import Arbitrary
+-- import RewriteRules
 
 import Syntax
 
 simplify :: Term -> Term
-simplify = unexpt . dedual
-
-
--- Normalize Dualities --
-
--- Negation Involution
-dedual (Not (Not t))    = dedual t
-
--- DeMorgans Laws
-dedual (Not (a :*: b))  = neg a :$:  neg b
-dedual (Not (a :$: b))  = neg a :*:  neg b
-dedual (Not (a :&: b))  = neg a :+:  neg b
-dedual (Not (a :+: b))  = neg a :&:  neg b
-
-dedual (Not (a :-@: b)) = dedual a :*: neg b
-
--- Exponential Dualities
-dedual (Not (OfCourse a)) = dedual (WhyNot   (Not a))
-dedual (Not (WhyNot a))   = dedual (OfCourse (Not a))
-
--- Unit Dualities
-dedual (Not One)    = Bottom
-dedual (Not Zero)   = Top
-dedual (Not Bottom) = One
-dedual (Not Top)    = Zero
-
--- Passthrough
-dedual (a :*: b)  = dedual a :*:  dedual b
-dedual (a :$: b)  = dedual a :$:  dedual b
-dedual (a :-@: b) = dedual a :-@: dedual b
-dedual (a :&: b)  = dedual a :&:  dedual b
-dedual (a :+: b)  = dedual a :+:  dedual b
-
-dedual (OfCourse t) = OfCourse (dedual t)
-dedual (WhyNot t)   = WhyNot   (dedual t)
-
-dedual t = t
-
-neg t = dedual (Not t)
-
+-- simplify = unexpt . dedual
+simplify = undefined
 
 -- Exponential Lattice --
 
