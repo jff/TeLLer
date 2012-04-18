@@ -71,8 +71,8 @@ prop_dedual_onlyNegativeAtoms x  =  check (dedual x)
 prop_unexpt_inExponentialLattice1 x  =  lattice (unexpt x)
 
 -- This is a weakened version of the prop above,
--- that makes counter examples easier to find for quickCheck 
-prop_unexpt_inExponentialLattice2 x  =  
+-- that makes counter examples easier to find for quickCheck
+prop_unexpt_inExponentialLattice2 x  =
   forAllShrink exponentOnlyTerm shrink $ \t -> lattice (unexpt t)
 
 lattice :: Term -> Bool
