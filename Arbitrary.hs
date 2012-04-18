@@ -28,6 +28,13 @@ genUnaryTerm n = do
   u <- genTerm n
   return (connective u)
 
+exponentOnlyTerm :: Gen Term
+exponentOnlyTerm = sized $ \n -> do
+  connectives <- listOf $ elements [OfCourse, WhyNot]
+  let term = foldr ($) (Atom "a") connectives
+  return term
+
+
 -- This make take a very long time for large ASTs
 shrinkDeep op (a, b) = [a, b] ++ [ l `op` r | l <- shrink' a, r <- shrink' b]
            where shrink' x = take 2 (shrink x)
