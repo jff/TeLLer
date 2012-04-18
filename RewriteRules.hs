@@ -19,8 +19,8 @@ dedual_rules = [
 
     "(a -@ b)^" --@ "a * b^",
 
-    "(!a)^" --@ "?a^",
-    "(?a)^" --@ "!a^",
+    "(!a)^" --@ "?(a^)",
+    "(?a)^" --@ "!(a^)",
 
     "1^" --@ "%",
     "0^" --@ "#",
@@ -39,6 +39,30 @@ unexpt_rules = [
     "?!%" --@ "%"
   ]
 
+aux_rules = [
+    "!(a & b)" --@ "!a * !b",
+    "?(a + b)" --@ "?a $ ?b",
+
+    "!#" --@ "1",
+    "?0" --@ "%",
+
+    "a * 1" --@ "a",
+    "a $ %" --@ "a",
+    "a + 0" --@ "a",
+    "a & #" --@ "a",
+
+    "a * 0" --@ "0",
+    "a $ #" --@ "#"
+  ]
+
+distrib_rules = [
+    "a * (b + c)" --@ "(a * b) + (a * c)",
+    "a $ (b & c)" --@ "(a $ b) & (a $ c)",
+
+    "a * (b & c)" --@ "(a * b) & (a * c)",
+    "a $ (b + c)" --@ "(a $ b) + (a $ c)"
+  ]
+
 dedual :: Term -> Term
 dedual = rewrite' dedual_rules
 
@@ -46,7 +70,12 @@ unexpt :: Term -> Term
 unexpt = rewrite' unexpt_rules
 
 simplify :: Term -> Term
-simplify = rewrite' (dedual_rules ++ unexpt_rules)
+simplify = rewrite' $ concat [
+    dedual_rules,
+    unexpt_rules,
+    aux_rules,
+    distrib_rules
+  ]
 
 -- Second order idempotence predicate
 prop_idempotent :: Eq a => (a -> a) -> a -> Bool
