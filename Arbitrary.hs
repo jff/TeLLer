@@ -44,9 +44,9 @@ instance Arbitrary Term where
 
   shrink (Atom s) = []
 
-  shrink (Not  t)     = [Not       t' | t' <- shrink t]
-  shrink (OfCourse t) = [OfCourse  t' | t' <- shrink t]
-  shrink (WhyNot   t) = [WhyNot    t' | t' <- shrink t]
+  shrink (Not  t)     = t : [Not       t' | t' <- shrink t]
+  shrink (OfCourse t) = t : [OfCourse  t' | t' <- shrink t]
+  shrink (WhyNot   t) = t : [WhyNot    t' | t' <- shrink t]
 
   shrink _ = []
 
