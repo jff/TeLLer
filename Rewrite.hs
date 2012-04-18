@@ -1,4 +1,4 @@
-module Rewrite(rewrite, rewrite', match) where
+module Rewrite (rewrite, rewrite', match, Rule) where
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -22,7 +22,7 @@ rewrite rules t = case msum matches of
   where matches = map (\rule -> matchbind rule t) rules
 
 rewrite' :: [Rule] -> Term -> Term
-rewrite' rules t = recur (rewrite rules t)
+rewrite' rules t = rewrite rules (recur (rewrite rules t))
   where walk t = rewrite' rules t
         recur a@(Atom _)   = a
         recur (Not t)      = Not $ walk t
