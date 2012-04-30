@@ -1,28 +1,47 @@
 {-# LANGUAGE ExistentialQuantification #-}
-module TestRunner where
+module TestRunner(main) where
+
+import System (getArgs)
+import Control.Arrow ((>>>))
 
 import Test
 import Test.QuickCheck
 
-import Logic
+import RewriteRules
 import Bag
 
-data Test = forall a. (Testable a) => Test String a
+data Test = forall a. (Testable a) => Test String String a
 
 tests :: [Test]
 tests = [
-    Test "Simplify -- Idempotent"
+    Test "Simplify" "Idempotent"
          prop_simplify_idempotent,
-    Test "Simplify -- Only negative atoms"
-         prop_simplify_onlyNegativeAtoms,
-    Test "Simplify -- In Exponential Lattice"
-         prop_simplify_inExponentialLattice,
-    Test "Subbag -- Reflexive" prop_subbag_reflexive,
-    Test "Subbag -- Less" prop_subbag_less,
-    Test "Subbag -- More" prop_subbag_more,
-    Test "Parser -- Print and Parse is Identity" prop_printParse_ident
+    Test "Dedual" "Only negative atoms"
+         prop_dedual_onlyNegativeAtoms,
+    Test "Unexpt" "In Exponential Lattice"
+         prop_unexpt_inExponentialLattice1,
+    Test "Unexpt" "In Exponential Lattice"
+         prop_unexpt_inExponentialLattice2,
+    Test "Subbag" "Reflexive" prop_subbag_reflexive,
+    Test "Subbag" "Less" prop_subbag_less,
+    Test "Subbag" "More" prop_subbag_more,
+    Test "Parser" "Print and Parse is Identity" prop_printParse_ident
   ]
 
-main = sequence_ (map runCheck tests)
-  where runCheck (Test s t) =
-          putStrLn s >> quickCheckWith (stdArgs {maxSuccess = 10000}) t
+runTest :: Test -> IO ()
+runTest (Test mod name prop) = do
+  let title = concat [mod, " -- ", name]
+  putStrLn title
+  quickCheckWith (stdArgs {maxSuccess = 10000}) prop
+
+runTests :: [Test] -> IO ()
+runTests tests = mapM_ runTest tests
+
+modname :: Test -> String
+modname (Test mod _ _) = mod
+
+main = do
+     args <- getArgs
+     case args of
+          [m] -> runTests $ filter (modname >>> (== m)) tests
+          _   -> runTests tests
