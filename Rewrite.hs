@@ -36,7 +36,7 @@ rewrite' rules t = rewrite rules (recur (rewrite rules t))
         recur t            = t
 
 matchbind :: (Term, Term) -> Term -> Maybe Term
-matchbind (pattern, replace) t = 
+matchbind (pattern, replace) t =
   do binding <- match pattern t
      return (bind binding replace)
 
@@ -47,6 +47,7 @@ crossMatch (a, b) (c, d) = x `mplus` y
         where
            x = match a c `union` match b d
            y = match a d `union` match b c
+
 
 match :: Term -> Term -> Maybe Binding
 

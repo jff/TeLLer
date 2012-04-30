@@ -1,4 +1,9 @@
-module RewriteRules (dedual, unexpt) where
+module RewriteRules (simplify, dedual, unexpt,
+  prop_simplify_idempotent,
+  prop_dedual_onlyNegativeAtoms,
+  prop_unexpt_inExponentialLattice1,
+  prop_unexpt_inExponentialLattice2)
+where
 
 import Test.QuickCheck
 import Arbitrary
@@ -39,10 +44,7 @@ unexpt_rules = [
     "?!%" --@ "%"
   ]
 
-aux_rules = [
-    "!(a & b)" --@ "!a * !b",
-    "?(a + b)" --@ "?a $ ?b",
-
+unit_rules = [
     "!#" --@ "1",
     "?0" --@ "%",
 
@@ -63,6 +65,11 @@ distrib_rules = [
     "a $ (b + c)" --@ "(a $ b) + (a $ c)"
   ]
 
+unexpt_aux_rules = [
+    "!(a & b)" --@ "!a * !b",
+    "?(a + b)" --@ "?a $ ?b"
+  ]
+
 dedual :: Term -> Term
 dedual = rewrite' dedual_rules
 
@@ -70,21 +77,25 @@ unexpt :: Term -> Term
 unexpt = rewrite' unexpt_rules
 
 simplify :: Term -> Term
-simplify = rewrite' $ concat [
-    dedual_rules,
-    unexpt_rules,
-    aux_rules,
-    distrib_rules
-  ]
+simplify = rewrite' $ concat [dedual_rules, unexpt_rules, unit_rules]
+
+reduce :: Term -> Term
+reduce = rewrite' $ concat [distrib_rules, unexpt_aux_rules]
 
 -- Second order idempotence predicate
 prop_idempotent :: Eq a => (a -> a) -> a -> Bool
 prop_idempotent f x  =  f (f x) == f x
 
-prop_simplify_idempotent x  =  prop_idempotent simplify
-prop_dedual_idempotent x    =  prop_idempotent dedual
-prop_unexpt_idempotent x    =  prop_idempotent unexpt
 
+prop_simplify_idempotent :: Term -> Bool
+prop_dedual_idempotent   :: Term -> Bool
+prop_unexpt_idempotent   :: Term -> Bool
+
+prop_simplify_idempotent  =  prop_idempotent simplify
+prop_dedual_idempotent    =  prop_idempotent dedual
+prop_unexpt_idempotent    =  prop_idempotent unexpt
+
+prop_dedual_onlyNegativeAtoms :: Term -> Bool
 prop_dedual_onlyNegativeAtoms x  =  check (dedual x)
   where check (Not (Atom _)) = True
         check (Not _)    = False
@@ -96,6 +107,9 @@ prop_dedual_onlyNegativeAtoms x  =  check (dedual x)
         check (OfCourse a) = check a
         check (WhyNot a)   = check a
         check _ = True
+
+prop_unexpt_inExponentialLattice1 :: Term -> Bool
+prop_unexpt_inExponentialLattice2 :: Term -> Gen Prop
 
 prop_unexpt_inExponentialLattice1 x  =  lattice (unexpt x)
 
