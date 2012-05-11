@@ -3,7 +3,7 @@ module Rewrite (rewrite, rewrite', match, Rule) where
 import Data.Map (Map)
 import qualified Data.Map as Map
 
-import Control.Monad (liftM2, mplus, msum)
+import Control.Monad (liftM2, mplus, msum, guard)
 import Data.Maybe (isJust)
 
 import Arbitrary
@@ -40,13 +40,19 @@ matchbind (pattern, replace) t =
   do binding <- match pattern t
      return (bind binding replace)
 
-union :: Ord a => Maybe (Map a b) -> Maybe (Map a b) -> Maybe (Map a b)
-union = Control.Monad.liftM2 Map.union
+merge :: (Ord a, Eq b) => Maybe (Map a b) -> Maybe (Map a b) -> Maybe (Map a b)
+merge mx my = do x <- mx
+                 y <- my
+                 guard  (compatible x y)
+                 return (x `Map.union` y)
+
+compatible x y = allTrue (Map.intersectionWith (==) x y)
+        where allTrue = Map.fold (&&) True
 
 crossMatch (a, b) (c, d) = x `mplus` y
         where
-           x = match a c `union` match b d
-           y = match a d `union` match b c
+           x = match a c `merge` match b d
+           y = match a d `merge` match b c
 
 
 match :: Term -> Term -> Maybe Binding
@@ -61,7 +67,7 @@ match (a :$: b) (c :$: d) = crossMatch (a, b) (c, d)
 match (a :&: b) (c :&: d) = crossMatch (a, b) (c, d)
 match (a :+: b) (c :+: d) = crossMatch (a, b) (c, d)
 
-match (a :-@: b) (c :-@: d) = match a c `union` match b d
+match (a :-@: b) (c :-@: d) = match a c `merge` match b d
 
 match Top Top       = Just Map.empty
 match Bottom Bottom = Just Map.empty
