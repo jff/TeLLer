@@ -1,4 +1,4 @@
-module Parser(term, run, run', tt) where
+module Parser(term, run, run', tt, tts) where
 
 import Syntax
 
@@ -88,6 +88,8 @@ tt :: String -> Term
 tt s = case parse term "<inline>" s of
          Left err -> error (show err)
          Right  x -> head x
+
+tts = map tt
 
 as :: Parser a -> (a -> b) -> Parser b
 as = flip fmap
