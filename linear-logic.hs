@@ -14,7 +14,7 @@ import RewriteRules
 main = getLine >>= run' term presentTerm >> main
 
 presentTerm t =
-  return (map simplify t) >>= reduceIO' >>= putStrLn . showTerms >> print t
+  return (map simplify t) >>= reduceIO' >>= putStrLn . showTerms
 
 reduce'     = findFixpoint reduce
 reduceIO' t = findFixpointIO reduceIO t
@@ -101,11 +101,16 @@ tryReduction :: ((Term, [Term]) -> Maybe [Term]) -> [Term] -> Maybe [Term]
 tryReductionIO ::
   ((Term, [Term]) -> IO (Maybe [Term])) -> [Term] -> IO (Maybe [Term])
 
-pointedMap  f ls = map  f (point ls)
-pointedMapM f ls = mapM f (point ls)
+pointedMap f ls = map  f (point ls)
 
 tryReduction   f ls = msum (pointedMap f ls)
-tryReductionIO f ls = return . msum =<< pointedMapM f ls
+tryReductionIO f ls = go (point ls)
+  where go [] = return Nothing
+        go (x:xs) = do
+            x' <- f x
+            case x' of
+              Just _  -> return x'
+              Nothing -> go xs
 
 point ls = go [] ls
   where go prev (x:next) = (x, prev ++ next) : go (x:prev) next
