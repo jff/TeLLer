@@ -1,0 +1,49 @@
+This is BibTeX, Version 0.99d (TeX Live 2011)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
+The top-level auxiliary file: report.aux
+The style file: plain.bst
+Database file #1: bibliography.bib
+Warning--can't use both volume and number fields in claessen2000quickcheck
+Warning--empty journal in leijen2001parsec
+You've used 8 entries,
+            2118 wiz_defined-function locations,
+            548 strings with 5280 characters,
+and the built_in function-call counts, 3156 in all, are:
+= -- 308
+> -- 163
+< -- 5
++ -- 65
+- -- 56
+* -- 212
+:= -- 499
+add.period$ -- 24
+call.type$ -- 8
+change.case$ -- 49
+chr.to.int$ -- 0
+cite$ -- 10
+duplicate$ -- 130
+empty$ -- 230
+format.name$ -- 56
+if$ -- 678
+int.to.chr$ -- 0
+int.to.str$ -- 8
+missing$ -- 8
+newline$ -- 42
+num.names$ -- 16
+pop$ -- 64
+preamble$ -- 1
+purify$ -- 42
+quote$ -- 0
+skip$ -- 111
+stack$ -- 0
+substring$ -- 161
+swap$ -- 49
+text.length$ -- 5
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 30
+warning$ -- 2
+while$ -- 27
+width$ -- 9
+write$ -- 88
+(There were 2 warnings)

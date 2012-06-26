@@ -1,0 +1,48 @@
+\begin{thebibliography}{1}
+
+\bibitem{bosser2010linear}
+A.G. Bosser, M.~Cavazza, and R.~Champagnat.
+\newblock Linear logic for non-linear storytelling.
+\newblock In {\em Proceeding of the 2010 conference on ECAI}, pages 713--718,
+  2010.
+
+\bibitem{claessen2000quickcheck}
+K.~Claessen and J.~Hughes.
+\newblock Quickcheck: a lightweight tool for random testing of haskell
+  programs.
+\newblock In {\em Acm sigplan notices}, volume~35, pages 268--279. ACM, 2000.
+
+\bibitem{girard1989proofs}
+J.Y. Girard, P.~Taylor, and Y.~Lafont.
+\newblock {\em Proofs and types}, volume~7.
+\newblock Cambridge University Press Cambridge, 1989.
+
+\bibitem{hudak1992report}
+P.~Hudak, S.~Peyton~Jones, P.~Wadler, B.~Boutel, J.~Fairbairn, J.~Fasel, M.M.
+  Guzm{\'a}n, K.~Hammond, J.~Hughes, T.~Johnsson, et~al.
+\newblock Report on the programming language haskell: a non-strict, purely
+  functional language version 1.2.
+\newblock {\em ACM SigPlan notices}, 27(5):1--164, 1992.
+
+\bibitem{leijen2001parsec}
+D.~Leijen and E.~Meijer.
+\newblock Parsec: Direct style monadic parser combinators for the real world.
+\newblock 2001.
+
+\bibitem{lincoln1992linear}
+P.~Lincoln.
+\newblock Linear logic.
+\newblock {\em ACM SIGACT News}, 23(2):29--37, 1992.
+
+\bibitem{marlow2004glasgow}
+S.~Marlow, S.P. Jones, et~al.
+\newblock The glasgow haskell compiler, 2004.
+
+\bibitem{LukeAAMAS2012}
+Luke Trodd, James Harland, and John Thangarajah.
+\newblock Agent deliberation via forward and backward chaining in linear logic.
+\newblock In {\em Proceedings of the 11th International Joint Conference on
+  Autonomous Agents and Multiagent Systems (AAMAS-2012)}, page To Appear,
+  Valencia, Spain, June 2012.
+
+\end{thebibliography}
