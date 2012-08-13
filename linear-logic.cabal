@@ -1,0 +1,30 @@
+Name:                linear-logic
+Version:             0.1
+Description:         A linear logic forward chaining theorem explorer
+License:             GPL
+License-file:        LICENSE
+Author:              Andy Kitchen
+Maintainer:          kitchen.andy@gmail.com
+Build-Type:          Simple
+Cabal-Version:       >= 1.2
+
+Executable linear-logic
+  Main-is:           linear-logic.hs
+  Other-Modules:     Arbitrary,
+                     Bag,
+                     Parser,
+                     Printer,
+                     Rewrite,
+                     RewriteRules,
+                     Setup,
+                     Syntax,
+                     Test,
+                     Util,
+                     Parser
+
+  Build-Depends:
+    base >= 3 && < 5,
+    containers >= 0.4 && < 2,
+    random >= 1 && < 2,
+    parsec >= 3 && < 4,
+    QuickCheck >= 2 && < 3

@@ -1,5 +1,3 @@
-*.hi
-*.o
-linear-logic
 hugsin
 TestRunner
+dist
