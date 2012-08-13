@@ -1,7 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 module TestRunner(main) where
 
-import System (getArgs)
+import System.Environment (getArgs)
 import Control.Arrow ((>>>))
 
 import Test
