@@ -2,8 +2,8 @@
 
 all: linear-logic
 
-linear-logic: Arbitrary.hs
-	ghc --make linear-logic.hs
+linear-logic:
+	cabal build
 
 test: TestRunner
 	./TestRunner
