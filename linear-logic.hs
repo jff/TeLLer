@@ -27,26 +27,30 @@ reduceIO ts = return (concatMap detensor ts)
           >>= return . tryReduction' reduceLolly
           >>= tryReductionIO' reduceWithIO
           >>= tryReductionIO' reducePlusIO
+          >>= tryReductionIO' reduceOneIO
           -- >>= (\x -> putStrLn (showTerms x) >> return x)
 
 reduceLolly :: (Term, [Term]) -> Maybe [Term]
 reduceLolly (a :-@: b, ts)
   | simplep a = do ts' <- removeProduct' a ts; Just (b:ts')
   | otherwise = error "lolly LHSs must be simple tensor products"
-reduceLolly (t, ts) = Nothing
+reduceLolly _ = Nothing
 
 
 reduceWithIO :: (Term, [Term]) -> IO (Maybe [Term])
 reduceWithIO (a :&: b, ts) = do t <- choose a b
                                 return $ Just (t:ts)
-reduceWithIO (t, ts) = return Nothing
+reduceWithIO _ = return Nothing
 
 
 reducePlusIO :: (Term, [Term]) -> IO (Maybe [Term])
 reducePlusIO (a :+: b, ts) = do t <- chooseRandom a b
                                 return $ Just (t:ts)
-reducePlusIO (t, ts) = return Nothing
+reducePlusIO _ = return Nothing
 
+reduceOneIO :: (Term, [Term]) -> IO (Maybe [Term])
+reduceOneIO (One, ts) = return $ Just ts
+reduceOneIO _ = return Nothing
 
 choose :: Term -> Term -> IO Term
 choose s t = do putStrLn "Please choose:"
