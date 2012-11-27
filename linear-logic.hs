@@ -15,9 +15,10 @@ import RewriteRules
 main = do
      args <- getArgs
      case args of
-          [f] -> readFile f >>= run' term doReductions
+          [f] -> runFile f
           []  -> runInteractive
 
+runFile f = readFile f >>= run' term doReductions
 runInteractive = getLine >>= run' term doReductions >> main
 
 doReductions t = do
