@@ -12,4 +12,4 @@ TestRunner:
 	ghc --make -main-is TestRunner TestRunner.hs
 
 clean:
-	rm *.o *.hi
+	rm -f *.o *.hi
