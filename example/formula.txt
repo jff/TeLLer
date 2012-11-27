@@ -1,0 +1,21 @@
+H*F*L*D2
+G -@ K1
+H*K1 -@ H*M*K1
+H*K1 -@ H*M*K1
+H*K1 -@ H*M*K1
+H*K1 -@ H*M*K1
+(D1*M -@ D0)*(D2*M -@ D1)
+(D1*M -@ D0)*(D2*M -@ D1)
+(D1*M -@ D0)*(D2*M -@ D1)
+(D1*M -@ D0)*(D2*M -@ D1)
+L*D0 -@ L*D1
+L*D1 -@ L*D2
+L*D0 -@ L*D1
+L*D1 -@ L*D2
+L*D0 -@ L*D1
+L*D1 -@ L*D2
+L*D0 -@ L*D1
+L*D1 -@ L*D2
+F -@ G
+L*D2*H -@ L*D0*K2
+K2*L*D2 -@ D

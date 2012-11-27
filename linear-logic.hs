@@ -4,6 +4,7 @@ import Data.List
 import Data.Maybe
 import Control.Monad
 import System.Random
+import System.Environment (getArgs)
 
 import Bag
 import Syntax
@@ -11,9 +12,15 @@ import Parser
 import Printer
 import RewriteRules
 
-main = getLine >>= run' term presentTerm >> main
+main = do
+     args <- getArgs
+     case args of
+          [f] -> readFile f >>= run' term doReductions
+          []  -> runInteractive
 
-presentTerm t = do
+runInteractive = getLine >>= run' term doReductions >> main
+
+doReductions t = do
   t' <- reduceIO' (map simplify t)
   putStrLn "End of story, no more reductions found for:"
   putStrLn (showTerms t')
@@ -43,9 +50,9 @@ reduceLollyIO (a :-@: b, ts)
   | simplep a = case (do ts' <- removeProduct' a ts; Just (b:ts')) of
                      Nothing   -> return Nothing
                      Just ts'' -> do
-                       putStrLn $ concat ["reducing: ", showTerm (a :-@: b),
+                       putStrLn $ concat ["reducing: ",   showTerm (a :-@: b),
                                           ", removing: ", showTerm a,
-                                          ", adding: ", showTerm b]
+                                          ", adding: ",   showTerm b]
                        return $ Just ts''
 
   | otherwise = do putStrLn "warning: lolly LHSs must be simple tensor products"
