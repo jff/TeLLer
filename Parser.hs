@@ -1,4 +1,4 @@
-module Parser(term, run, run', tt, tts) where
+module Parser(term, run, run', tt, tts, tts') where
 
 import Syntax
 
@@ -87,10 +87,13 @@ run' p f input
 
 run p input = run' p print input
 
-tt :: String -> Term
-tt s = case parse term "<inline>" s of
+tts' :: String -> [Term]
+tts' s = case parse term "<inline>" s of
          Left err -> error (show err)
-         Right  x -> head x
+         Right  x -> x
+
+tt :: String -> Term
+tt s = head (tts' s)
 
 tts = map tt
 

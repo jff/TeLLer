@@ -26,11 +26,11 @@ reduceIO :: [Term] -> IO [Term]
 
 reduce   ts = tryReduction' reduceLolly $ concatMap detensor ts
 reduceIO ts = return (concatMap detensor ts)
+          >>= tryReductionIO' reduceOfCourseLollyIO
           >>= tryReductionIO' reduceLollyIO
           >>= tryReductionIO' reduceWithIO
           >>= tryReductionIO' reducePlusIO
           >>= tryReductionIO' reduceOneIO
-          >>= tryReductionIO' reduceOfCourseLollyIO
 
 reduceLolly :: (Term, [Term]) -> Maybe [Term]
 reduceLolly (a :-@: b, ts)
