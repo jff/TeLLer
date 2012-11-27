@@ -3,8 +3,7 @@ import Test.QuickCheck
 import Syntax
 
 identifier :: Gen String
-identifier = do c <- elements ['a'..'z']
-                return (c:[])
+identifier = elements $ zipWith (\c n -> c:show n) ['a'..'z'] [0..]
 
 genTerm 0 = frequency [
     (5, identifier `as` Atom),

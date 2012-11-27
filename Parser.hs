@@ -66,7 +66,10 @@ despace p = do x <- p
                return x
 
 symbol s   = despace (string s)
-identifier = despace (many1 letter)
+identifier = despace $
+             do c <- letter
+                d <- many (letter <|> digit)
+                return (c:d)
 
 parens p = do symbol "("
               inner <- p
