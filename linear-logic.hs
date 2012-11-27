@@ -48,13 +48,13 @@ reduceLolly _ = Nothing
 
 reduceLollyIO :: (Term, [Term]) -> IO (Maybe [Term])
 reduceLollyIO (a :-@: b, ts)
-  | simplep a = case (do ts' <- removeProduct' a ts; Just (b:ts')) of
+  | simplep a = case removeProduct' a ts of
                      Nothing   -> return Nothing
-                     Just ts'' -> do
+                     Just ts'  -> do
                        putStrLn $ concat ["reducing: ",   showTerm (a :-@: b),
                                           ", removing: ", showTerm a,
                                           ", adding: ",   showTerm b]
-                       return $ Just ts''
+                       return $ Just (b:ts')
 
   | otherwise = do putStrLn "warning: lolly LHSs must be simple tensor products"
                    return $ Nothing
