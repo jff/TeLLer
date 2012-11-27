@@ -16,7 +16,7 @@ main = getLine >>= run' term presentTerm >> main
 presentTerm t =
   return (map simplify t) >>= reduceIO' >>= putStrLn . showTerms
 
-reduce'     = findFixpoint reduce
+reduce'     = findFixpoint   reduce
 reduceIO' t = findFixpointIO reduceIO t
 
 reduce   :: [Term] -> [Term]
@@ -98,12 +98,12 @@ removeProduct [] ts = Just ts
 removeProduct _  [] = Nothing
 
 
-tryReduction'   f ls = fromMaybe ls (tryReduction f ls)
-tryReductionIO' f ls = return . fromMaybe ls =<< tryReductionIO f ls
-
 tryReduction :: ((Term, [Term]) -> Maybe [Term]) -> [Term] -> Maybe [Term]
 tryReductionIO ::
   ((Term, [Term]) -> IO (Maybe [Term])) -> [Term] -> IO (Maybe [Term])
+
+tryReduction'   f ls = fromMaybe ls (tryReduction f ls)
+tryReductionIO' f ls = return . fromMaybe ls =<< tryReductionIO f ls
 
 pointedMap f ls = map  f (point ls)
 

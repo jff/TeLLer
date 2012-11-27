@@ -43,11 +43,11 @@ shrinkDeep op (a, b) = [a, b] ++ [ l `op` r | l <- shrink' a, r <- shrink' b]
 instance Arbitrary Term where
   arbitrary = sized $ \n -> genTerm n
 
-  shrink (a :*:  b) = shrinkDeep (:*:) (a, b)
-  shrink (a :$:  b) = shrinkDeep (:$:) (a, b)
+  shrink (a :*:  b) = shrinkDeep (:*:)  (a, b)
+  shrink (a :$:  b) = shrinkDeep (:$:)  (a, b)
   shrink (a :-@: b) = shrinkDeep (:-@:) (a, b)
-  shrink (a :&:  b) = shrinkDeep (:&:) (a, b)
-  shrink (a :+:  b) = shrinkDeep (:+:) (a, b)
+  shrink (a :&:  b) = shrinkDeep (:&:)  (a, b)
+  shrink (a :+:  b) = shrinkDeep (:+:)  (a, b)
 
   shrink (Atom s) = []
 

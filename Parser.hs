@@ -39,7 +39,7 @@ tensor = symbol "*" `construct` (:*:)
 par    = symbol "$" `construct` (:$:)
 
 
-imp   =  rlolly <|> (symbol "-"  >> (lolly <|> arrow))
+imp    = rlolly <|> (symbol "-"  >> (lolly <|> arrow))
 lolly  = symbol "@"  `construct` (:-@:)
 arrow  = symbol "!"  `construct` (\l r -> OfCourse (l :-@: r))
 rlolly = symbol "@-" `construct` flip (:-@:)
