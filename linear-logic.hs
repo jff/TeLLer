@@ -13,8 +13,10 @@ import RewriteRules
 
 main = getLine >>= run' term presentTerm >> main
 
-presentTerm t =
-  return (map simplify t) >>= reduceIO' >>= putStrLn . showTerms
+presentTerm t = do
+  t' <- reduceIO' (map simplify t)
+  putStrLn "End of story, no more reductions found for:"
+  putStrLn (showTerms t')
 
 reduce'     = findFixpoint   reduce
 reduceIO' t = findFixpointIO reduceIO t
@@ -24,17 +26,32 @@ reduceIO :: [Term] -> IO [Term]
 
 reduce   ts = tryReduction' reduceLolly $ concatMap detensor ts
 reduceIO ts = return (concatMap detensor ts)
-          >>= return . tryReduction' reduceLolly
+          >>= tryReductionIO' reduceLollyIO
           >>= tryReductionIO' reduceWithIO
           >>= tryReductionIO' reducePlusIO
           >>= tryReductionIO' reduceOneIO
-          -- >>= (\x -> putStrLn (showTerms x) >> return x)
+          >>= tryReductionIO' reduceOfCourseLollyIO
 
 reduceLolly :: (Term, [Term]) -> Maybe [Term]
 reduceLolly (a :-@: b, ts)
   | simplep a = do ts' <- removeProduct' a ts; Just (b:ts')
   | otherwise = error "lolly LHSs must be simple tensor products"
 reduceLolly _ = Nothing
+
+reduceLollyIO :: (Term, [Term]) -> IO (Maybe [Term])
+reduceLollyIO (a :-@: b, ts)
+  | simplep a = case (do ts' <- removeProduct' a ts; Just (b:ts')) of
+                     Nothing   -> return Nothing
+                     Just ts'' -> do
+                       putStrLn $ concat ["reducing: ", showTerm (a :-@: b),
+                                          ", removing: ", showTerm a,
+                                          ", adding: ", showTerm b]
+                       return $ Just ts''
+
+  | otherwise = do putStrLn "warning: lolly LHSs must be simple tensor products"
+                   return $ Nothing
+
+reduceLollyIO _ = return $ Nothing
 
 
 reduceWithIO :: (Term, [Term]) -> IO (Maybe [Term])
@@ -51,6 +68,14 @@ reducePlusIO _ = return Nothing
 reduceOneIO :: (Term, [Term]) -> IO (Maybe [Term])
 reduceOneIO (One, ts) = return $ Just ts
 reduceOneIO _ = return Nothing
+
+reduceOfCourseLollyIO :: (Term, [Term]) -> IO (Maybe [Term])
+reduceOfCourseLollyIO (OfCourse (a :-@: b), ts) =
+  if (a :-@: b) `elem` ts
+  then return $ Nothing
+  else return $ Just ((a :-@: b):OfCourse (a :-@: b):ts)
+
+reduceOfCourseLollyIO _ = return Nothing
 
 choose :: Term -> Term -> IO Term
 choose s t = do putStrLn "Please choose:"
