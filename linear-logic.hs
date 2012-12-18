@@ -38,7 +38,7 @@ reduceIO :: [Term] -> IO [Term]
 reduce   ts = tryReduction' reduceLolly $ concatMap detensor ts
 reduceIO ts = tryReductionsIO reductions (concatMap detensor ts)
          where reductions = [
-                   reduceOfCourseLollyIO,
+                   -- reduceOfCourseLollyIO,
                    reduceLollyIO,
                    reduceWithIO,
                    reducePlusIO,
@@ -56,19 +56,39 @@ reduceLolly (a :-@: b, ts)
 reduceLolly _  = Nothing
 
 reduceLollyIO :: IOReduction
-reduceLollyIO (a :-@: b, ts)
-  | isSimple a = case removeProduct' a ts of
-                     Nothing   -> return Nothing
-                     Just ts'  -> do
-                       putStrLn $ concat ["reducing: ",   showTerm (a :-@: b),
-                                          ", removing: ", showTerm a,
-                                          ", adding: ",   showTerm b]
-                       return $ Just (b:ts')
 
-  | otherwise = do putStrLn "warning: lolly LHSs must be simple tensor products"
-                   return $ Nothing
+reduceLollyIO (a :-@: b, ts) =
+   removeProductGiving (\ts' -> b:ts') a b ts
+
+reduceLollyIO (t@(OfCourse (a :-@: b)), ts) =
+   removeProductGiving (\ts' -> b:t:ts') a b ts
 
 reduceLollyIO _ = return $ Nothing
+
+removeProductGiving ::
+  ([Term] -> [Term]) ->
+  Term -> Term -> [Term] ->
+  IO (Maybe [Term])
+
+removeProductGiving f a b ts
+  | isSimple a =
+    case removeProduct' a ts of
+      Nothing   -> return Nothing
+      Just ts'  -> do
+        reduceMessage a b
+        return $ Just (f ts')
+
+  | otherwise = lollyTensorWarning
+
+reduceMessage :: Term -> Term -> IO ()
+reduceMessage a b = putStrLn $ concat ["reducing: ",   showTerm (a :-@: b),
+                                       ", removing: ", showTerm a,
+                                       ", adding: ",   showTerm b]
+
+lollyTensorWarning :: IO (Maybe a)
+lollyTensorWarning = do 
+      putStrLn "warning: lolly LHSs must be simple tensor products"
+      return $ Nothing
 
 
 reduceWithIO :: IOReduction
