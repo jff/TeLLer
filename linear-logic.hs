@@ -12,14 +12,17 @@ import Parser
 import Printer
 import RewriteRules
 
+type Reduction   = (Term, [Term]) -> Maybe [Term]
+type IOReduction = (Term, [Term]) -> IO (Maybe [Term])
+
 main = do
      args <- getArgs
      case args of
           [f] -> runFile f
           []  -> runInteractive
 
-runFile f = readFile f >>= run' term doReductions
-runInteractive = getLine >>= run' term doReductions >> main
+runFile f      = readFile f >>= run' term doReductions
+runInteractive = getLine    >>= run' term doReductions >> runInteractive
 
 doReductions t = do
   t' <- reduceIO' (map simplify t)
@@ -33,20 +36,26 @@ reduce   :: [Term] -> [Term]
 reduceIO :: [Term] -> IO [Term]
 
 reduce   ts = tryReduction' reduceLolly $ concatMap detensor ts
-reduceIO ts = return (concatMap detensor ts)
-          >>= tryReductionIO' reduceOfCourseLollyIO
-          >>= tryReductionIO' reduceLollyIO
-          >>= tryReductionIO' reduceWithIO
-          >>= tryReductionIO' reducePlusIO
-          >>= tryReductionIO' reduceOneIO
+reduceIO ts = tryReductionsIO reductions (concatMap detensor ts)
+         where reductions = [
+                   reduceOfCourseLollyIO,
+                   reduceLollyIO,
+                   reduceWithIO,
+                   reducePlusIO,
+                   reduceOneIO
+                 ]
 
-reduceLolly :: (Term, [Term]) -> Maybe [Term]
+tryReductionsIO :: [IOReduction] -> [Term] -> IO [Term]
+tryReductionsIO (f:fs) t = tryReductionIO' f t >>= tryReductionsIO fs
+tryReductionsIO []     t = return t
+
+reduceLolly :: Reduction
 reduceLolly (a :-@: b, ts)
   | simplep a = do ts' <- removeProduct' a ts; Just (b:ts')
   | otherwise = error "lolly LHSs must be simple tensor products"
 reduceLolly _ = Nothing
 
-reduceLollyIO :: (Term, [Term]) -> IO (Maybe [Term])
+reduceLollyIO :: IOReduction
 reduceLollyIO (a :-@: b, ts)
   | simplep a = case removeProduct' a ts of
                      Nothing   -> return Nothing
@@ -62,22 +71,22 @@ reduceLollyIO (a :-@: b, ts)
 reduceLollyIO _ = return $ Nothing
 
 
-reduceWithIO :: (Term, [Term]) -> IO (Maybe [Term])
+reduceWithIO :: IOReduction
 reduceWithIO (a :&: b, ts) = do t <- choose a b
                                 return $ Just (t:ts)
 reduceWithIO _ = return Nothing
 
 
-reducePlusIO :: (Term, [Term]) -> IO (Maybe [Term])
+reducePlusIO :: IOReduction
 reducePlusIO (a :+: b, ts) = do t <- chooseRandom a b
                                 return $ Just (t:ts)
 reducePlusIO _ = return Nothing
 
-reduceOneIO :: (Term, [Term]) -> IO (Maybe [Term])
+reduceOneIO :: IOReduction
 reduceOneIO (One, ts) = return $ Just ts
 reduceOneIO _ = return Nothing
 
-reduceOfCourseLollyIO :: (Term, [Term]) -> IO (Maybe [Term])
+reduceOfCourseLollyIO :: IOReduction
 reduceOfCourseLollyIO (OfCourse (a :-@: b), ts) =
   if (a :-@: b) `elem` ts
   then return $ Nothing
@@ -131,14 +140,13 @@ removeProduct [] ts = Just ts
 removeProduct _  [] = Nothing
 
 
-tryReduction :: ((Term, [Term]) -> Maybe [Term]) -> [Term] -> Maybe [Term]
-tryReductionIO ::
-  ((Term, [Term]) -> IO (Maybe [Term])) -> [Term] -> IO (Maybe [Term])
-
 tryReduction'   f ls = fromMaybe ls (tryReduction f ls)
 tryReductionIO' f ls = return . fromMaybe ls =<< tryReductionIO f ls
 
 pointedMap f ls = map  f (point ls)
+
+tryReduction   :: Reduction   -> [Term] -> Maybe [Term]
+tryReductionIO :: IOReduction -> [Term] -> IO (Maybe [Term])
 
 tryReduction   f ls = msum (pointedMap f ls)
 tryReductionIO f ls = go (point ls)
