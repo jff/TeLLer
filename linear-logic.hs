@@ -51,13 +51,13 @@ tryReductionsIO []     t = return t
 
 reduceLolly :: Reduction
 reduceLolly (a :-@: b, ts)
-  | simplep a = do ts' <- removeProduct' a ts; Just (b:ts')
-  | otherwise = error "lolly LHSs must be simple tensor products"
-reduceLolly _ = Nothing
+  | isSimple a = do ts' <- removeProduct' a ts; Just (b:ts')
+  | otherwise  = error "lolly LHSs must be simple tensor products"
+reduceLolly _  = Nothing
 
 reduceLollyIO :: IOReduction
 reduceLollyIO (a :-@: b, ts)
-  | simplep a = case removeProduct' a ts of
+  | isSimple a = case removeProduct' a ts of
                      Nothing   -> return Nothing
                      Just ts'  -> do
                        putStrLn $ concat ["reducing: ",   showTerm (a :-@: b),
@@ -115,10 +115,10 @@ chooseRandom s t = do
     ]
   return t'
 
-simplep ts = all atomp (detensor ts)
+isSimple ts = all isAtom (detensor ts)
 
-atomp (Atom _) = True
-atomp _ = False
+isAtom (Atom _) = True
+isAtom _ = False
 
 removeProduct'  :: Term -> [Term] -> Maybe [Term]
 removeProduct   :: [String] -> [String] -> Maybe [String]
@@ -126,7 +126,7 @@ removeProduct   :: [String] -> [String] -> Maybe [String]
 removeProduct' t ts =
   let deatom (Atom s) = s
       used = map deatom (detensor t)
-      (atoms, rest) = partition atomp ts
+      (atoms, rest) = partition isAtom ts
       have = map deatom atoms
       left = removeProduct (sort used) (sort have)
   in do atoms' <- left
