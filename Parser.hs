@@ -1,4 +1,4 @@
-module Parser(term, run, run', tt, tts, tts') where
+module Parser(term, run, run', tt, tts, tts',parse) where
 
 import Syntax
 

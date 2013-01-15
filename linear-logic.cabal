@@ -3,7 +3,7 @@ Version:             0.1
 Description:         A linear logic forward chaining theorem explorer
 License:             GPL
 License-file:        LICENSE
-Author:              Andy Kitchen
+Author:              Andy Kitchen and Joao F. Ferreira
 Maintainer:          kitchen.andy@gmail.com
 Build-Type:          Simple
 Cabal-Version:       >= 1.2
@@ -27,4 +27,6 @@ Executable linear-logic
     containers >= 0.4 && < 2,
     random >= 1 && < 2,
     parsec >= 3 && < 4,
-    QuickCheck >= 2 && < 3
+    QuickCheck >= 2 && < 3,
+    directory,
+    mtl

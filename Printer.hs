@@ -38,6 +38,7 @@ showsTerm d One    = showString "1"
 showsTerm d Zero   = showString "0"
 
 
+showTerms [] = "(empty)"
 showTerms ls = showsTerms ls ""
 
 showsTerms []     = id
