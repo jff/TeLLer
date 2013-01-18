@@ -92,7 +92,9 @@ reduceStateIO ts = do
                 [
                    -- reduceOfCourseLollyIO,
                    reduceLollyStateIO,
-                   reduceWithStateIO
+                   reduceWithStateIO,
+                   reducePlusStateIO,
+                   reduceOneStateIO
 --                   reducePlusIO,
 --                   reduceOneIO
                  ]
@@ -236,15 +238,35 @@ reduceWithStateIO (term@(a :&: b), ts) =
        return $ Just (t:ts) -- TODO: DO I NEED A RETURN TYPE?
 reduceWithStateIO _ = return Nothing
 
+reducePlusStateIO :: StateReduction
+reducePlusStateIO (term@(a :+: b), ts) = 
+    do t <- lift $ chooseRandom a b  -- ask the user what action to choose
+       state <- get
+--       put $ state {env = (t:(env state)) \\ [term]} -- change the environment
+       put $ state {env = t:ts } 
+       return $ Just (t:ts) -- TODO: DO I NEED A RETURN TYPE?
+reducePlusStateIO _ = return Nothing
 
+
+{--
 reducePlusIO :: IOReduction
 reducePlusIO (a :+: b, ts) = do t <- chooseRandom a b
                                 return $ Just (t:ts)
 reducePlusIO _ = return Nothing
+--}
 
+reduceOneStateIO :: StateReduction
+reduceOneStateIO (One, ts) = do
+    state <- get
+    put $ state {env = ts}
+    return $ Just ts
+reduceOneStateIO _ = return Nothing
+
+{--
 reduceOneIO :: IOReduction
 reduceOneIO (One, ts) = return $ Just ts
 reduceOneIO _ = return Nothing
+--}
 
 reduceOfCourseLollyIO :: IOReduction
 reduceOfCourseLollyIO (OfCourse (a :-@: b), ts) =
@@ -270,7 +292,7 @@ chooseRandom s t = do
              0 -> s
              1 -> t
   putStrLn $ concat [
-      "Dungeon Master chooses: ", showTerm t', " from ",
+      "TeLLer's random choice: ", showTerm t', " from ",
       showTerm s, " or ", showTerm t
     ]
   return t'
