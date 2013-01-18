@@ -83,6 +83,7 @@ reduceStateIO ts = do
 
     -- If there are several available actions, let the user choose which one to
     -- reduce first
+    -- TODO: and you are not focusing...
     when ((length enabledActions)>1) $ chooseActionToFocusOn enabledActions
     
     -- chooseActionToFocusOn changes the state, so let us get a new copy
