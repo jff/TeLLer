@@ -78,6 +78,7 @@ reduceStateIO ts = do
     let enabledActions = listEnabledActions (env state)
     when inDebugMode $
         (lift $ print $ "[DEBUG] ENVIRONMENT: " ++ show (env state)) >>
+        (lift $ print $ "[DEBUG] UNFOCUSED: " ++ show (unfocused state)) >>
         (lift $ print $ "[DEBUG] ENABLED ACTIONS: " ++ show enabledActions)
 
     -- If there are several available actions, let the user choose which one to
@@ -194,6 +195,7 @@ removeProductGiving' f a b ts
         -- Terms b were just introduced. If b enables unfocused actions,
         -- bring them to the environment.
         actionsToFocus <- focusActionsEnabledBy b
+        state <- get
         put $ state { env = (f ts')++actionsToFocus}
         increaseNumberOfReductionsBy 1
         return $ Just ((f ts') ++ actionsToFocus)
