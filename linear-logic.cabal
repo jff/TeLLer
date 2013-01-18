@@ -29,4 +29,5 @@ Executable linear-logic
     parsec >= 3 && < 4,
     QuickCheck >= 2 && < 3,
     directory,
-    mtl
+    mtl,
+    readline

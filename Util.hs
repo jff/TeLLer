@@ -2,6 +2,7 @@ module Util where
 
 import Data.Traversable
 import Control.Applicative
+import System.IO (hFlush, stdout)
 
 import Syntax
 
@@ -17,3 +18,15 @@ termMap f t = go t
         go (l :&: r)     = go l :&: go r
         go (l :+: r)     = go l :+: go r
         go t | unitary t = t
+
+
+------------------
+-- IO utilities --
+------------------
+flushStr :: String -> IO ()
+flushStr s = putStr s >> hFlush stdout
+
+flushStrLn :: String -> IO ()
+flushStrLn s = putStrLn s >> hFlush stdout
+
+
