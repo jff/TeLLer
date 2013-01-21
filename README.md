@@ -1,5 +1,6 @@
 # TeLLer v0.1
 
-TeLLer is... (still to be written).
+TeLLer is an interactive linear logic prover and proof explorer.
 
-... and the codebase has to be restructured and organized!
+TeLLer was originally developed by Andy Kitchen (see https://github.com/andykitchen/linear-logic)
+and further extended by Joao F. Ferreira.

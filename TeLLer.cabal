@@ -1,15 +1,16 @@
-Name:                linear-logic
+Name:                teller
 Version:             0.1
-Description:         A linear logic forward chaining theorem explorer
+Description:         An interactive linear logic forward chaining theorem explorer
 License:             GPL
 License-file:        LICENSE
 Author:              Andy Kitchen and Joao F. Ferreira
-Maintainer:          kitchen.andy@gmail.com
+Maintainer:          joao@joaoff.com
 Build-Type:          Simple
 Cabal-Version:       >= 1.2
 
-Executable linear-logic
-  Main-is:           linear-logic.hs
+Executable TeLLer
+  Main-is:           Main.hs
+  hs-source-dirs:    src/ tests/
   Other-Modules:     Arbitrary,
                      Bag,
                      Parser,
