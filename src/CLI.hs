@@ -62,11 +62,11 @@ tellerError = _flushStrLn
 tellerDebug :: String -> IO ()
 tellerDebug = _flushStrLn
 
+printListOfActions :: [Term] -> IO ()
 printListOfActions l = do
     _flushStrLn "There are several actions available. Please choose one of the following:"
-    let f = \(n,a) -> _flushStr ((show n) ++ ") ") >> _flushStrLn (show a)
+    let f = \(n,a) -> _flushStr ((show n) ++ ") ") >> _flushStrLn (showTerm a)
     sequence_ $ map f (zip [0..] l)
- 
 
 ----------------------
 -- Input functions --
