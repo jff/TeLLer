@@ -1,184 +1,166 @@
 module Main where
 
 import Data.List ((\\))
---import Data.Maybe 
---import Control.Monad
-import Control.Monad.State
-import Control.Applicative 
+import Control.Monad.State (lift, evalStateT, get, gets, put, modify, when)
 import System.Environment (getArgs)
 import System.Directory (doesFileExist)
-import System.Console.Readline
+import System.Console.Readline (readline, addHistory)
+import Data.Version (showVersion)
 
---import Bag
-import Syntax
-import Parser
-import Printer
-import RewriteRules
-import Reductions
+-- Build imports
+import Paths_teller (version)
+
+-- Local imports
+import Parser (parse, term, tts')
+import Syntax (Term)
+import Reductions (startTeLLer)
 import ProverState
-import Util
-import Term
+import UserIO
 
+-- | 'teller_version' is the version number used in the cabal file.
+teller_version :: String
+teller_version = showVersion version
 
-
-changeEnvTo :: [Term] -> ProverState -> ProverState
-changeEnvTo newEnv state = state { env = linearizeTensorProducts newEnv } 
-
-addToEnv :: [Term] -> ProverState -> ProverState
-addToEnv resources state = state {env = (env state)++(linearizeTensorProducts resources)} 
-
--- TODO: removeFromEnv is quadratic!; can this improve?
-removeFromEnv :: [Term] -> ProverState -> ProverState
-removeFromEnv resources state = state {env = (env state) \\ (linearizeTensorProducts resources) }
-
-changeDebugMode :: ProverState -> ProverState
-changeDebugMode state = state {debugMode = not (debugMode state)} 
-
-changeGranularityTo :: Int -> ProverState -> ProverState
-changeGranularityTo n state = state { granularity = n }
-
-
--- ask user for string
--- TODO: Improve reliability; tabs/auto-complete (readline), etc.
-readStringFromUser :: String -> IO String
-readStringFromUser query = do
-  flushStr query
-  answer <- readline ""
-  case answer of
-    Nothing -> return ""
-    Just line -> return line
-
-toggleDebugMode :: ProverStateIO ProverState
+toggleDebugMode :: ProverStateIO ()
 toggleDebugMode = do
-    state <- get
-    let inDebugMode = debugMode state
-    if inDebugMode then lift (flushStrLn "Debug mode turned off.")
-                   else lift (flushStrLn "Debug mode turned on.")
-    return (changeDebugMode state)
+    modify changeDebugMode
+    inDebugMode <- gets debugMode 
+    if inDebugMode then lift (tellerDebug "Debug mode turned on.")
+                   else lift (tellerDebug "Debug mode turned off.")
 
-changeGranularity :: ProverStateIO ProverState
+changeGranularity :: ProverStateIO ()
 changeGranularity = do
-    state <- get
-    let currentGranularity = granularity state
+    currentGranularity <- gets granularity 
     g <- lift $ askUserForInt (>0) ("Enter new value for granularity (current value is " ++ (show currentGranularity) ++ "): ")
-    return (changeGranularityTo g state)
+    modify (changeGranularityTo g)
 
+loadFileAsk :: ProverStateIO ()
+loadFileAsk = do
+    fileName <- lift $ readFileNameFromUser "Load file: "
+    loadFile fileName
 
-askUserForInt :: (Int->Bool) -> String -> IO Int
-askUserForInt validate query = do
-    flushStr query
-    answer <- getLine
-    let n = reads answer :: [(Int, String)]
-    case n of
-        []      -> flushStrLn "Not a number. Please try again!" >> askUserForInt validate query
-        (i,_):_ -> if (validate i) then return i
-                                   else flushStrLn "Invalid number. Please try again!" >> askUserForInt validate query
-    
-
-
-removeTrailingSpace :: String -> String
-removeTrailingSpace s | last s == ' ' = init s
-                      | otherwise     = s
-
-loadFile :: ProverStateIO ProverState
-loadFile = do
-    f <- lift $ readStringFromUser "Load file: "
-    let fileName = removeTrailingSpace f
-    state <- get
+loadFile :: FilePath -> ProverStateIO ()
+loadFile fileName = do
     fileExists <- lift $ doesFileExist fileName
     if (fileExists) then do fileContents <- lift $ readFile fileName 
-                            state <- resetAllCounters
-                            return (changeEnvTo (tts' fileContents) state)
-                    else lift (flushStrLn $ "ERROR: File '" ++ fileName ++ "' does not exist!") >> return state
+                            modify setCountersToZero
+                            modify (changeEnvTo (tts' fileContents))
+                    else lift (tellerError $ "ERROR: File '" ++ fileName ++ "' does not exist!") 
 
-removeResource :: ProverStateIO ProverState
-removeResource = do
-    resources <- lift $ readStringFromUser "Enter resources to remove: "
-    state <- get
-    case parse term "<interactive>" resources of
-     Left err -> do
-                  lift $ flushStrLn "ERROR: Parsing error. Please try again." 
-                  return state
-     Right r -> return (removeFromEnv (tts' resources) state)
 
-addResource :: ProverStateIO ProverState
-addResource = do
-    resources <- lift $ readStringFromUser "Enter resources to add: "
-    state <- get
-    case parse term "<interactive>" resources of
-     Left err -> do
-                  lift $ flushStrLn "ERROR: Parsing error. Please try again." 
-                  return state
-     Right r -> return (addToEnv (tts' resources) state)
+changeEnvWith :: ([Term] -> ProverState -> ProverState) -> String -> ProverStateIO ()
+changeEnvWith f t = do
+    case parse term "<interactive>" t of
+     Left err -> lift $ tellerError "ERROR: Parsing error. Please try again." 
+     Right r  -> modify (f r) 
 
-startReductions :: ProverStateIO ProverState
+addResources :: String -> ProverStateIO ()
+addResources = changeEnvWith addToEnv
+
+removeResources :: String -> ProverStateIO ()
+removeResources = changeEnvWith removeFromEnv
+
+startReductions :: ProverStateIO ()
 startReductions = do
-    state <- get
-    let inDebugMode = debugMode state
+    inDebugMode <- gets debugMode
     when inDebugMode $
-        do lift $ print $ "[DEBUG] ALL ACTIONS: " ++ show ((env state)) 
-    -- TODO: ASK FOR ENABLED ACTIONS
-    --newEnv <- reduceStateIO' (map simplify (env state)) 
-    --reduceStateIO' (env state) 
+        do actions <- gets env
+           lift $ tellerDebug $ "[DEBUG] ALL ACTIONS: " ++ show actions
     startTeLLer
-    lift $ flushStrLn "End of story, no more reductions found."
-    state <- get
-    
     treductions <- getNumberTotalReductions
-    lift $ flushStrLn $ (show treductions) ++ " reductions."
-    newState <- get
-    return newState 
+    lift $ tellerWarning $ "End of story, no more reductions found.\n(" ++ (show treductions) ++ " reductions performed)"
     
-printEnv state = do flushStrLn $ "\nCurrent (focused) resources: \n" ++ showTerms (env state) ++ "\n" 
-                    flushStrLn $ "\nCurrent (unfocused) resources: \n" ++ showTerms (unfocused state) ++ "\n" 
+printState :: ProverState -> IO ()
+printState state = tellerPrintLn (showState state)
 
--- the main loop for interacting with the user
-mainLoop :: ProverState -> IO ProverState
-mainLoop state = do
+mainLoop' :: ProverStateIO ProverState
+mainLoop' = do
+  state <- get
   let inDebugMode = debugMode state
-  when inDebugMode $ printEnv state 
-  comm <- readline "Command [d+-glpsqr?]: "
-  flushStr "\n"
+  when inDebugMode $ lift $ printState state 
+  comm <- lift $ readline "Command [d+-glpsqr?]: "
+  lift $ tellerPrint "\n"
   case comm of
-    Nothing -> flushStrLn "Goodbye." >> return state
+    Nothing -> lift $ tellerPrintLn goodbye_msg >> return state
     Just c  -> 
-     do addHistory c 
+     do lift $ addHistory c 
         continue <- case c of
-            ('d':_) -> do newEnv <- evalStateT toggleDebugMode state; return (Just newEnv)
-            ('+':_) -> do newEnv <- evalStateT addResource state; return (Just newEnv)
-            ('-':_) -> do newEnv <- evalStateT removeResource state; return (Just newEnv)
-            ('g':_) -> do newEnv <- evalStateT changeGranularity state; return (Just newEnv)
-            ('l':_) -> do newEnv <- evalStateT loadFile state; return (Just newEnv)
-            ('p':_) -> if inDebugMode then return (Just state) else printEnv state >> return (Just state)
-            ('q':_) -> return Nothing
-            ('r':_) -> return (Just initialState)
-            ('s':_) -> do newEnv <- evalStateT startReductions state; return (Just newEnv) 
-            ('?':_) -> flushStrLn helpOptions >> return (Just state)
-            ('\n':_) -> return (Just state)
-            _       -> do flushStrLn $ "Command " ++ c ++ " not recognized."
-                          return (Just state)
-        maybe (return state) mainLoop continue
-  
+            -- Toggle debug mode.
+            ('d':_) -> toggleDebugMode >> mainLoop'
 
+            -- Insert resources.
+            ['+']   -> do lift $ tellerWarning $ "The command + requires one or more arguments.\
+                                                \ Example: '+ A*B A-@C' introduces resources A, B, and A-@C"
+                          mainLoop'
+            ('+':t) -> addResources t >> mainLoop'
+    
+            -- Remove resources.
+            ['-']   -> do lift $ tellerWarning $ "The command - requires one or more arguments.\
+                                                \ Example: '- A*B A-@C' removes resources A, B, and A-@C"
+                          mainLoop'
+            ('-':t) -> removeResources t >> mainLoop'
+
+            -- Change granularity.
+            ('g':_) -> changeGranularity >> mainLoop'
+
+            -- Load file.
+            ['l']    -> loadFileAsk >> mainLoop'
+            ('l':f) -> loadFile ((head.words) f)  >> mainLoop'
+
+            -- Print current state. If inDebugMode, the state is already being printed, so don't do anything.
+            ('p':_) -> if inDebugMode then mainLoop' 
+                                      else lift (printState state) >> mainLoop'
+            -- Quit.
+            ('q':_) -> lift (tellerPrintLn goodbye_msg) >> return state
+
+            -- Reset to the initial state.
+            ('r':_) -> lift $ evalStateT mainLoop' initialState --return (Just initialState)
+
+            -- Start reductions.
+            ('s':_) -> startReductions >> mainLoop'
+
+            -- Help options.
+            ('?':_) -> lift (tellerPrintLn helpOptions) >> mainLoop'
+
+            -- In case the user presses enter, display command line again.
+            ('\n':_) -> mainLoop'
+
+            -- All other commands are not recognized.
+            _       -> do lift $ tellerPrintLn $ "Command " ++ c ++ " not recognized."
+                          mainLoop'
+        return state
+
+
+-- | Main function.
+--   TODO: better support for CLI arguments.
 main :: IO ()
 main = do
   args <- getArgs
   case args of
     [f] -> do fileExists <- doesFileExist f
-              if(fileExists) then printWelcomeMessage >> createEnvFromFile f >>= mainLoop
-                             else printWelcomeMessage >> flushStrLn "ERROR: File passed in command line does not exist." >> mainLoop initialState
+              if(fileExists) then printWelcomeMessage >> createEnvFromFile f >>= evalStateT mainLoop'
+                             else printWelcomeMessage >> 
+                                  tellerError "ERROR: File passed in command line does not exist." >> 
+                                  evalStateT mainLoop' initialState
               return ()
     []  -> do printWelcomeMessage
-              env <- mainLoop initialState
+              evalStateT mainLoop' initialState
               return ()
 
-printWelcomeMessage = flushStrLn $ logo ++ "\n" ++ help
-help = "Enter ? for help."
+
+---------------------------------------------------
+-- String constants: welcome message, logo, etc. --
+---------------------------------------------------
+
+printWelcomeMessage :: IO ()
+printWelcomeMessage = tellerPrintLn $ logo ++ "\nEnter ? for help."
+
+helpOptions :: String
 helpOptions = 
     "Available commands:\n\
   \  \td: toggles debug mode (on/off)\n\
-  \  \t+: insert resource\n\
-  \  \t-: remove resource\n\
+  \  \t+ <res>: insert res\n\
+  \  \t- <res>: remove res\n\
   \  \tg: change granularity\n\
   \  \tl: load file\n\
   \  \tp: print environment\n\
@@ -187,38 +169,13 @@ helpOptions =
   \  \tq: quit\n\
   \  \t?: help\n"
 
+logo :: String
 logo = " \
 \ ______     __    __              \n\
 \ /_  __/__  / /   / /   ___  _____ \n\
 \  / / / _ \\/ /   / /   / _ \\/ ___/ \n\
 \ / / /  __/ /___/ /___/  __/ /     \n\
-\/_/  \\___/_____/_____/\\___/_/    v0.1   \n"
+\/_/  \\___/_____/_____/\\___/_/    v" ++ teller_version ++"   \n"
 
-createEnvFromFile :: FilePath -> IO ProverState
-createEnvFromFile fileName = do
-    fileContents <- readFile fileName 
-    return (changeEnvTo (tts' fileContents) initialState)
-
-
--- TODO: restructure the code below
-
-
-
-
-{--
-main' = do
-     args <- getArgs
-     case args of
-          [f] -> runFile f
-          []  -> runInteractive
-
-runFile f      = readFile f >>= run' term doReductions
-runInteractive = getLine    >>= run' term doReductions >> runInteractive
-
-
-doReductions t = do
-  t' <- reduceIO' (map simplify t)
-  putStrLn "End of story, no more reductions found for:"
-  putStrLn (showTerms t')
---}
-
+goodbye_msg :: String
+goodbye_msg = "Goodbye. Thanks for using TeLLer."

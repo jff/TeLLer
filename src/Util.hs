@@ -2,7 +2,6 @@ module Util where
 
 import Data.Traversable
 import Control.Applicative
-import System.IO (hFlush, stdout)
 
 import Syntax
 
@@ -20,13 +19,11 @@ termMap f t = go t
         go t | unitary t = t
 
 
-------------------
--- IO utilities --
-------------------
-flushStr :: String -> IO ()
-flushStr s = putStr s >> hFlush stdout
+--- String utilities
+{--
+removeTrailingSpace :: String -> String
+removeTrailingSpace s | last s == ' ' = init s
+                      | otherwise     = s
 
-flushStrLn :: String -> IO ()
-flushStrLn s = putStrLn s >> hFlush stdout
-
+--}
 

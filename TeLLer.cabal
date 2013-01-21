@@ -1,5 +1,5 @@
 Name:                teller
-Version:             0.1
+Version:             0.1.9
 Description:         An interactive linear logic forward chaining theorem explorer
 License:             GPL
 License-file:        LICENSE
@@ -11,6 +11,8 @@ Cabal-Version:       >= 1.2
 Executable TeLLer
   Main-is:           Main.hs
   hs-source-dirs:    src/ tests/
+  other-modules:
+    Paths_teller
   Other-Modules:     Arbitrary,
                      Bag,
                      Parser,
