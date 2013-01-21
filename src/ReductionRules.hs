@@ -12,10 +12,14 @@ import UserIO (choose, chooseRandom)
 type StateReduction = (Term, Environment) -> ProverStateIO (Maybe Environment)
 
 reduceLollyStateIO :: StateReduction
-reduceLollyStateIO (a :-@: b, ts) =
-   removeProductGiving' (\ts' -> b:ts') a b ts
-reduceLollyStateIO (t@(OfCourse (a :-@: b)), ts) =
-   removeProductGiving' (\ts' -> b:t:ts') a b ts
+reduceLollyStateIO (t@(a :-@: b), ts) = do
+    state <- get
+    put $ state { actionTrace = (actionTrace state) ++ [t] }
+    removeProductGiving' (\ts' -> b:ts') a b ts
+reduceLollyStateIO (t@(OfCourse (a :-@: b)), ts) = do
+    state <- get
+    put $ state { actionTrace = (actionTrace state) ++ [t] }
+    removeProductGiving' (\ts' -> b:t:ts') a b ts
 reduceLollyStateIO _ = return $ Nothing
 
 

@@ -140,7 +140,7 @@ tryReductionStateIO f ls = go (point ls)
               Nothing -> go xs
 
 -- TODO: organize the code below
--- Utils:
+-- (Move to Utils?)
 point ls = go [] ls
   where go prev (x:next) = (x, prev ++ next) : go (x:prev) next
         go prev [] = []

@@ -7,6 +7,11 @@ import System.Directory (doesFileExist)
 import System.Console.Readline (readline, addHistory)
 import Data.Version (showVersion)
 
+-- Import GraphViz to generate graphs
+import Data.Graph.Inductive (Gr, mkGraph)
+import Data.GraphViz (runGraphviz, graphToDot,nonClusteredParams,GraphvizOutput(..), toLabel, fmtNode, globalAttributes, fmtEdge)
+
+
 -- Build imports
 import Paths_teller (version)
 
@@ -16,6 +21,7 @@ import Syntax (Term)
 import Reductions (startTeLLer)
 import ProverState
 import UserIO
+import Printer (showTerm)
 
 -- | 'teller_version' is the version number used in the cabal file.
 teller_version :: String
@@ -73,18 +79,39 @@ startReductions = do
 printState :: ProverState -> IO ()
 printState state = tellerPrintLn (showState state)
 
+printGraph :: FilePath -> ProverStateIO ()
+printGraph filename = do
+    trace <- gets actionTrace
+    let nds = zip [0..] (map showTerm trace)
+    let eds = [(n,n+1,"") | n<-[0..length(nds)-2]]
+    let cgr = mkGraph nds eds :: Gr String String
+    lift $ runGraphviz (graphToDot params cgr) Jpeg filename
+    return ()
+ where params = nonClusteredParams { globalAttributes = [],
+                                     fmtNode = fn,
+                                     fmtEdge = const []
+                                   }
+       fn (n,l) = [toLabel l]
+
 mainLoop' :: ProverStateIO ProverState
 mainLoop' = do
   state <- get
   let inDebugMode = debugMode state
   when inDebugMode $ lift $ printState state 
-  comm <- lift $ readline "Command [d+-glpsqr?]: "
+  comm <- lift $ readline "Command [cd+-glpsqr?]: "
   lift $ tellerPrint "\n"
   case comm of
     Nothing -> lift $ tellerPrintLn goodbye_msg >> return state
     Just c  -> 
      do lift $ addHistory c 
         continue <- case c of
+
+            -- Causality graph
+            ['c']   -> do lift $ tellerWarning $ "The command c requires one argument.\
+                                                \ Example: 'c mygraph.jpg' saves the causality graph to the file mygraph.jpg"
+                          mainLoop'
+            ('c':f) -> printGraph ((head.words) f) >> mainLoop'
+
             -- Toggle debug mode.
             ('d':_) -> toggleDebugMode >> mainLoop'
 
@@ -158,6 +185,7 @@ printWelcomeMessage = tellerPrintLn $ logo ++ "\nEnter ? for help."
 helpOptions :: String
 helpOptions = 
     "Available commands:\n\
+  \  \tc <filename.jpg>: writes the causality graph to filename.jpg\n\
   \  \td: toggles debug mode (on/off)\n\
   \  \t+ <res>: insert res\n\
   \  \t- <res>: remove res\n\

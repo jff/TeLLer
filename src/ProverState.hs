@@ -30,6 +30,7 @@ data ProverState = ProverState
     { env :: Environment,       -- ^ The field 'env' is the sequence of terms that is used in the focused reductions.
       unfocused :: [Term], -- ^ The field 'unfocused' is a sequence of actions that are unfocused and will not be used 
                            --   in the focused reductions.
+      actionTrace :: [Term], -- ^ The field 'actionTrace' represents the causality trace
       granularity :: Granularity, -- ^ The field 'granularity' defines the number of focused reductions to be performed.
       focusedReductions :: Int,   -- ^ The field 'focusedReductions' is a counter for the number of focused reductions performed so far.
       totalReductions :: Int,     -- ^ The field 'totalReductions' is a counter for the total number of reductions performed so far.
@@ -39,6 +40,7 @@ data ProverState = ProverState
 -- | The initial state.
 initialState = ProverState { env = [], 
                              unfocused = [], 
+                             actionTrace = [], 
                              granularity = 2, 
                              focusedReductions = 0, 
                              totalReductions = 0, 

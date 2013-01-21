@@ -33,4 +33,6 @@ Executable TeLLer
     QuickCheck >= 2 && < 3,
     directory,
     mtl,
-    readline
+    readline,
+    graphviz,
+    fgl
