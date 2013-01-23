@@ -87,7 +87,7 @@ printGraph filename = do
         lift $ tellerWarning "Graphviz is not installed. Please install it and try again."
     when (ginstalled) $ do
         trace <- gets actionTrace
-        lift $ tellerWarning (show trace)
+        --lift $ tellerWarning (show trace)
         let (nds,eds) = mkCGraph trace
         let cgr = mkGraph nds eds :: Gr String String
         lift $ runGraphviz (graphToDot params cgr) Jpeg filename
