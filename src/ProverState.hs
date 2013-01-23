@@ -5,15 +5,17 @@
 --         as argument and yield a new state.
 --
 --      2. The second section defines monadic functions that change the state.
+--         TODO: this needs a major cleanup!
 
 module ProverState where
 
 import Control.Monad.State
 import Data.List ((\\))
+import qualified Data.Map as Map
 
 -- Local imports
 import Syntax (Term)
-import Term (linearizeTensorProducts, listEnabledActionsBy)
+import Term (linearizeTensorProducts, listEnabledActionsBy, isAtom)
 import Parser (tts')       -- used to load state from file
 import Printer (showTerms) -- used to show a state as a string
 import RewriteRules (simplify)
@@ -25,12 +27,22 @@ type Granularity = Int
 -- | Environment is a multiset of terms (here, represented as a sequence)
 type Environment = [Term]
 
+
+-- | A trace is a list of triples (r,lr,a), meaning that action identified by 'a' was performed
+--   at reduction 'r' and it used (or could have used) the resources created
+--   in the reductions listed in lr
+--type Trace = [(Int,[Int],Term)]
+type Trace = [(Int,[Int],String)]
+
 -- | ProverState is the datatype that models TeLLer's state.
 data ProverState = ProverState 
     { env :: Environment,       -- ^ The field 'env' is the sequence of terms that is used in the focused reductions.
       unfocused :: [Term], -- ^ The field 'unfocused' is a sequence of actions that are unfocused and will not be used 
                            --   in the focused reductions.
-      actionTrace :: [Term], -- ^ The field 'actionTrace' represents the causality trace
+      actionTrace :: Trace, -- ^ The field 'actionTrace' represents the causality trace. 
+      originOfResources :: Map.Map Term [Int],
+      _cGraphNode :: Int, -- ^ Internal identifier of the causality graph nodes
+      
       granularity :: Granularity, -- ^ The field 'granularity' defines the number of focused reductions to be performed.
       focusedReductions :: Int,   -- ^ The field 'focusedReductions' is a counter for the number of focused reductions performed so far.
       totalReductions :: Int,     -- ^ The field 'totalReductions' is a counter for the total number of reductions performed so far.
@@ -40,7 +52,9 @@ data ProverState = ProverState
 -- | The initial state.
 initialState = ProverState { env = [], 
                              unfocused = [], 
-                             actionTrace = [], 
+                             actionTrace = [(0,[],"Big Bang")], 
+                             originOfResources = Map.empty,
+                             _cGraphNode = 0,
                              granularity = 2, 
                              focusedReductions = 0, 
                              totalReductions = 0, 
@@ -84,12 +98,44 @@ setTotalReductionsToZero state = state { totalReductions = 0 }
 setCountersToZero :: ProverState -> ProverState
 setCountersToZero state = state { totalReductions = 0, focusedReductions = 0 }
 
+incrementGraphNodeCount :: ProverState -> ProverState
+incrementGraphNodeCount state = state { _cGraphNode = (_cGraphNode state) + 1}
+
+-- Causality Graph
+addActionToTrace :: (Int,[Int],String) -> ProverState -> ProverState
+addActionToTrace action state = state { actionTrace = (actionTrace state) ++ [action] }
+
+-- non-OR nodes: consume the first k (where k is the second element in the triple) from the map
+-- If l==[], then the map is unchanged
+changeMapNonOR :: [(Term, Int, [Int])] -> ProverState -> ProverState
+changeMapNonOR l state =
+    let originRes = originOfResources state
+        newMap = foldr (\(k,qty,_) -> Map.adjust (drop qty) k) originRes l
+    in state {originOfResources = newMap}
+
+-- OR nodes: 
+-- If l==[], then the map is unchanged
+changeMapOR :: [(Term, Int, [Int])] -> Int -> ProverState -> ProverState
+changeMapOR l orNode state =
+    let originRes = originOfResources state
+        newMap = foldr (\(k,qty,nds) -> Map.insert k (replicate ((length nds) - qty) orNode)) originRes l
+    in state {originOfResources = newMap}
+
+
+
+
 showState :: ProverState -> String
 showState state = "Current focused resources: \n"   ++ showTerms (env state) ++ "\n" ++
                   "Current unfocused resources: \n" ++ showTerms (unfocused state) ++ "\n"
 
 
-
+initOriginMapWithAtoms :: ProverState -> ProverState
+initOriginMapWithAtoms state =
+    let ctx = linearizeTensorProducts $ env state
+        atoms = filter isAtom ctx
+        omap = originOfResources state
+        newMap = foldr (\k -> Map.insertWith (++) k [0]) omap atoms
+    in state {originOfResources = newMap}
 
 
 --- Non pure functions
@@ -133,6 +179,7 @@ increaseNumberOfReductionsBy n = do
     increaseTotalReductions n 
     increaseFocusedReductions n 
                                     
+-- TODO: remove the following, as it is equivalent to gets totalReductions
 getNumberTotalReductions :: ProverStateIO Int
 getNumberTotalReductions = do
     state <- get

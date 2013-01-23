@@ -9,7 +9,7 @@ import Data.Version (showVersion)
 
 -- Import GraphViz to generate graphs
 import Data.Graph.Inductive (Gr, mkGraph)
-import Data.GraphViz (runGraphviz, graphToDot,nonClusteredParams,GraphvizOutput(..), toLabel, fmtNode, globalAttributes, fmtEdge)
+import Data.GraphViz (runGraphviz, graphToDot,nonClusteredParams,GraphvizOutput(..), toLabel, fmtNode, globalAttributes, fmtEdge, isGraphvizInstalled)
 
 
 -- Build imports
@@ -22,6 +22,7 @@ import Reductions (startTeLLer)
 import ProverState
 import UserIO
 import Printer (showTerm)
+import CGraph
 
 -- | 'teller_version' is the version number used in the cabal file.
 teller_version :: String
@@ -81,17 +82,23 @@ printState state = tellerPrintLn (showState state)
 
 printGraph :: FilePath -> ProverStateIO ()
 printGraph filename = do
-    trace <- gets actionTrace
-    let nds = zip [0..] (map showTerm trace)
-    let eds = [(n,n+1,"") | n<-[0..length(nds)-2]]
-    let cgr = mkGraph nds eds :: Gr String String
-    lift $ runGraphviz (graphToDot params cgr) Jpeg filename
-    return ()
- where params = nonClusteredParams { globalAttributes = [],
-                                     fmtNode = fn,
-                                     fmtEdge = const []
-                                   }
-       fn (n,l) = [toLabel l]
+    ginstalled <- lift $ isGraphvizInstalled
+    when (not ginstalled) $ do
+        lift $ tellerWarning "Graphviz is not installed. Please install it and try again."
+    when (ginstalled) $ do
+        trace <- gets actionTrace
+        lift $ tellerWarning (show trace)
+        let (nds,eds) = mkCGraph trace
+        let cgr = mkGraph nds eds :: Gr String String
+        lift $ runGraphviz (graphToDot params cgr) Jpeg filename
+        return ()
+            -- TODO: move params, etc to CGraph.hs
+            where params = nonClusteredParams { 
+                            globalAttributes = [],
+                            fmtNode = fn,
+                            fmtEdge = const []
+                           }
+                  fn (n,l) = [toLabel l]
 
 mainLoop' :: ProverStateIO ProverState
 mainLoop' = do

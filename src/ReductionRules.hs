@@ -1,24 +1,23 @@
 module ReductionRules where
 
 import Control.Monad.State
-import Data.List ((\\), intersect)
+import Data.List ((\\), intersect, nub)
+import qualified Data.Map as Map
+import Data.Maybe (fromMaybe)
 
 import ProverState
 import Syntax 
 import Printer (showTerm)
 import Term (detensor, linearizeTensorProducts, isSimple)
-import UserIO (choose, chooseRandom)
+import UserIO (choose, chooseRandom, tellerWarning, tellerDebug)
+import CGraph (getResourceNodeList, partitionResourceNodeList)
 
 type StateReduction = (Term, Environment) -> ProverStateIO (Maybe Environment)
 
 reduceLollyStateIO :: StateReduction
-reduceLollyStateIO (t@(a :-@: b), ts) = do
-    state <- get
-    put $ state { actionTrace = (actionTrace state) ++ [t] }
+reduceLollyStateIO (t@(a :-@: b), ts) = 
     removeProductGiving' (\ts' -> b:ts') a b ts
-reduceLollyStateIO (t@(OfCourse (a :-@: b)), ts) = do
-    state <- get
-    put $ state { actionTrace = (actionTrace state) ++ [t] }
+reduceLollyStateIO (t@(OfCourse (a :-@: b)), ts) = 
     removeProductGiving' (\ts' -> b:t:ts') a b ts
 reduceLollyStateIO _ = return $ Nothing
 
@@ -35,63 +34,87 @@ removeProductGiving' f a b ts
     case myRemoveFunction a ts of
       Nothing   -> return Nothing
       Just ts'  -> do
+        -- PROPERTY (RES_AVAILABLE): the action can execute, hence the map originOfResources has to contain all the needed resources
         state <- get
+
+        -- Show message
         lift $ reduceMessage a b
+
         -- Terms b were just introduced. If b enables unfocused actions,
         -- bring them to the environment.
         actionsToFocus <- focusActionsEnabledBy b
+
+        -- TODO: change the following to modify
         state <- get
         put $ state { env = (f ts')++actionsToFocus}
-        increaseNumberOfReductionsBy 1
+
+        -- Increase number of reductions *and* the graph node count
+        increaseNumberOfReductionsBy 1 -- TODO: change this to modify
+        modify incrementGraphNodeCount
+
+        -- change trace and map
+        state <- get
+        --treductions <- gets totalReductions
+        nodeCount <- gets _cGraphNode
+        originRes <- gets originOfResources
+
+        let needs = linearizeTensorProducts [a]
+        let nodeList = getResourceNodeList state needs
+        let flatNodeList = nub $ concatMap (\(_,_,c)->c) nodeList
+        let (oneNode,multipleNodes) = partitionResourceNodeList nodeList
+
+        -- FIXME: se precisar de 2 recursos e um for OR e o outro nao???
+        if(multipleNodes==[]) then modify (addActionToTrace (nodeCount,flatNodeList,showTerm (a :-@: b)))
+                 else do
+                        modify (addActionToTrace (nodeCount,flatNodeList,"OR"))
+                        modify incrementGraphNodeCount
+                        nodeCount <- gets _cGraphNode
+                        modify (addActionToTrace (nodeCount,[nodeCount-1],showTerm (a :-@: b)))
+
+        -- The map is changed if oneNode is /= from []
+        modify (changeMapNonOR oneNode)
+        -- The map is changed if multipleNodes is /= from []
+        modify (changeMapOR multipleNodes nodeCount)
+
+        -- Change map with the newly introduced resources
+        let introduces = linearizeTensorProducts [b]
+        omap <- gets originOfResources
+        let newMap = foldr (\k -> Map.insertWith (++) k [nodeCount]) omap introduces
+
+        -- TODO: use modify
+        state <- get
+        put $ state {originOfResources = newMap}
         return $ Just ((f ts') ++ actionsToFocus)
 
   | otherwise = lift $ lollyTensorWarning
 
 
-{--
-removeProductGiving ::
-  ([Term] -> [Term]) ->
-  Term -> Term -> [Term] ->
-  IO (Maybe [Term])
-
-removeProductGiving f a b ts
-  | isSimple a =
-    case removeProduct' a ts of
-      Nothing   -> return Nothing
-      Just ts'  -> do
-        reduceMessage a b
-        return $ Just (f ts')
-
-  | otherwise = lollyTensorWarning
---}
-
 reduceMessage :: Term -> Term -> IO ()
-reduceMessage a b = putStrLn $ concat ["reducing: ",   showTerm (a :-@: b),
+reduceMessage a b = tellerWarning $ concat ["reducing: ",   showTerm (a :-@: b),
                                        ", removing: ", showTerm a,
                                        ", adding: ",   showTerm b]
 
 lollyTensorWarning :: IO (Maybe a)
 lollyTensorWarning = do 
-      putStrLn "warning: lolly LHSs must be simple tensor products"
+      tellerWarning "warning: lolly LHSs must be simple tensor products"
       return $ Nothing
 
 
+-- TODO: unify reduceWith and reducePlus, parameterizing the choice function
 reduceWithStateIO :: StateReduction
 reduceWithStateIO (term@(a :&: b), ts) = 
     do t <- lift $ choose a b  -- ask the user what action to choose
        state <- get
---       put $ state {env = (t:(env state)) \\ [term]} -- change the environment
        put $ state {env = t:ts } 
-       return $ Just (t:ts) -- TODO: DO I NEED A RETURN TYPE?
+       return $ Just (t:ts) 
 reduceWithStateIO _ = return Nothing
 
 reducePlusStateIO :: StateReduction
 reducePlusStateIO (term@(a :+: b), ts) = 
-    do t <- lift $ chooseRandom a b  -- ask the user what action to choose
+    do t <- lift $ chooseRandom a b  
        state <- get
---       put $ state {env = (t:(env state)) \\ [term]} -- change the environment
        put $ state {env = t:ts } 
-       return $ Just (t:ts) -- TODO: DO I NEED A RETURN TYPE?
+       return $ Just (t:ts) 
 reducePlusStateIO _ = return Nothing
 
 
@@ -148,6 +171,3 @@ myRemoveFunction atoms env =
         if (newAtoms \\ int == [])
         then Just $ newEnv \\ newAtoms
         else Nothing
- 
-
-

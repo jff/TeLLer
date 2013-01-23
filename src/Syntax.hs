@@ -23,7 +23,7 @@ data Term
      | One
      | Zero
 
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 atomic :: Term -> Bool
 atomic (Atom _) = True

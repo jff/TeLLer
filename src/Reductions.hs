@@ -22,6 +22,9 @@ startTeLLer :: ProverStateIO ()
 startTeLLer = do
     -- First, we apply apply some simplification rules to the environment (these are defined in 'RewriteRules')
     modify simplifyEnv
+    -- We also initialize the map modelling the origin of resources
+    modify initOriginMapWithAtoms
+    omap <- gets originOfResources
     -- We now start the fixpoint calculation
     startFixpointReductions
 
