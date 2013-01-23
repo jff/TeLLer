@@ -8,7 +8,7 @@ It was further extended by João F. Ferreira to support focusing granularity and
 graphs.
 
 
-## Research team behind TeLLeR
+## Research team behind TeLLer
 
  * Anne-Gwenn Bosser
  * Marc Cavazza
