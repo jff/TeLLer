@@ -29,6 +29,8 @@ isEnabledAction env (t1 :-@: t2) = let resources = linearizeTensorProducts [t1] 
                                        resourcesAvailable = (resources \\ (intersect linearEnv resources)) == []
                                    in  (isSimple t1) && resourcesAvailable
 isEnabledAction env (t1 :&: t2)  = isEnabledAction env t1 && isEnabledAction env t2
+isEnabledAction env (t1 :+: t2)  = isEnabledAction env t1 || isEnabledAction env t2
+isEnabledAction env (OfCourse (t1 :-@: t2))  = isEnabledAction env (t1 :-@: t2)
 isEnabledAction _ _              = False
 
 linearizeTensorProducts :: [Term] -> [Term]

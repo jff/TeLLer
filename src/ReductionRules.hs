@@ -8,7 +8,7 @@ import Data.Maybe (fromMaybe)
 import ProverState
 import Syntax 
 import Printer (showTerm)
-import Term (detensor, linearizeTensorProducts, isSimple)
+import Term (detensor, linearizeTensorProducts, isSimple, isEnabledAction)
 import UserIO (choose, chooseRandom, tellerWarning, tellerDebug)
 import CGraph (getResourceNodeList, partitionResourceNodeList)
 
@@ -17,8 +17,14 @@ type StateReduction = (Term, Environment) -> ProverStateIO (Maybe Environment)
 reduceLollyStateIO :: StateReduction
 reduceLollyStateIO (t@(a :-@: b), ts) = 
     removeProductGiving' (\ts' -> b:ts') a b ts
-reduceLollyStateIO (t@(OfCourse (a :-@: b)), ts) = 
-    removeProductGiving' (\ts' -> b:t:ts') a b ts
+reduceLollyStateIO (t@(OfCourse (a :-@: b)), ts) = do
+    reduceLollyStateIO (a :-@:b, t:ts)
+--    removeProductGiving' (\ts' -> t:ts') a b ts
+    --removeProductGiving' (\ts' -> b:t:ts') a b ts
+--    gran <- gets granularity
+--    fres <- gets focusedReductions
+--    if (gran-fres>0) then removeProductGiving' (\ts' -> b:t:ts') a b ts
+--                     else return Nothing
 reduceLollyStateIO _ = return $ Nothing
 
 
@@ -30,7 +36,7 @@ removeProductGiving' ::
 removeProductGiving' f a b ts
   | isSimple a =
     --case removeProduct' a ts of
-    -- TODO: make sure that myRemoveFunction is correct!
+    -- TODO: make sure that myRemoveFunction is correct! and change its name to resourcesAreAvailable
     case myRemoveFunction a ts of
       Nothing   -> return Nothing
       Just ts'  -> do
@@ -39,6 +45,10 @@ removeProductGiving' f a b ts
 
         -- Show message
         lift $ reduceMessage a b
+        g <- gets granularity
+        fr <- gets focusedReductions
+--        lift $ putStrLn $ "Granularity " ++ (show g)
+--        lift $ putStrLn $ "Focused Steps " ++ (show fr)
 
         -- Terms b were just introduced. If b enables unfocused actions,
         -- bring them to the environment.
@@ -89,39 +99,44 @@ removeProductGiving' f a b ts
   | otherwise = lift $ lollyTensorWarning
 
 
-reduceMessage :: Term -> Term -> IO ()
-reduceMessage a b = tellerWarning $ concat ["reducing: ",   showTerm (a :-@: b),
-                                       ", removing: ", showTerm a,
-                                       ", adding: ",   showTerm b]
-
-lollyTensorWarning :: IO (Maybe a)
-lollyTensorWarning = do 
-      tellerWarning "warning: lolly LHSs must be simple tensor products"
-      return $ Nothing
-
-
--- TODO: unify reduceWith and reducePlus, parameterizing the choice function
+-- | 'reduceWithStateIO' applies the reduction rule for &.
+--   The reduction only happens if both arguments of & are enabled.
 reduceWithStateIO :: StateReduction
-reduceWithStateIO (term@(a :&: b), ts) = 
-    do t <- lift $ choose a b  -- ask the user what action to choose
-       state <- get
-       put $ state {env = t:ts } 
+reduceWithStateIO (term@(a :&: b), ts) 
+ -- Perform only if the choice is enabled (i.e., both actions are enabled)
+ | isEnabledAction ts term =
+    do 
+       t <- lift $ choose (term:ts) a b  -- ask the user what action to choose
+       modify (changeEnvTo (t:ts))
        return $ Just (t:ts) 
+ | otherwise = return Nothing
 reduceWithStateIO _ = return Nothing
 
+-- | 'reduceWithPlusStateIO' applies the reduction rule for +.
+--   If both arguments are enabled, TeLLer chooses one randomly.
+--   If only one of the arguments is enabled, that argument is chosen.
+--   Otherwise, the state is not changed.
 reducePlusStateIO :: StateReduction
-reducePlusStateIO (term@(a :+: b), ts) = 
+reducePlusStateIO (term@(a :+: b), ts) 
+ -- Perform only if one of the choices is enabled. If both are available, choose randomly.
+ | (isEnabledAction ts a) && (isEnabledAction ts b) = 
     do t <- lift $ chooseRandom a b  
-       state <- get
-       put $ state {env = t:ts } 
+       modify (changeEnvTo (t:ts))
        return $ Just (t:ts) 
+ | (isEnabledAction ts a) && (not (isEnabledAction ts b)) = 
+    do modify (changeEnvTo (a:ts))
+       return $ Just (a:ts) 
+ | (not (isEnabledAction ts a)) && (isEnabledAction ts b) = 
+    do modify (changeEnvTo (b:ts))
+       return $ Just (b:ts) 
+ | otherwise = return Nothing
 reducePlusStateIO _ = return Nothing
 
 
+-- | 'reduceOneStateIO' removes any occurence of One from the environment.
 reduceOneStateIO :: StateReduction
 reduceOneStateIO (One, ts) = do
-    state <- get
-    put $ state {env = ts}
+    modify (changeEnvTo ts)
     return $ Just ts
 reduceOneStateIO _ = return Nothing
 
@@ -171,3 +186,17 @@ myRemoveFunction atoms env =
         if (newAtoms \\ int == [])
         then Just $ newEnv \\ newAtoms
         else Nothing
+
+-- TODO: change this to CLI?
+reduceMessage :: Term -> Term -> IO ()
+reduceMessage a b = tellerWarning $ concat ["reducing: ",   showTerm (a :-@: b),
+                                            ", removing: ", showTerm a,
+                                            ", adding: ",   showTerm b]
+
+lollyTensorWarning :: IO (Maybe a)
+lollyTensorWarning = do 
+      tellerWarning "Warning: lolly LHSs must be simple tensor products"
+      return $ Nothing
+
+
+

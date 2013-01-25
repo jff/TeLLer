@@ -43,6 +43,7 @@ startFixpointReductions = do
     when (existEnabledUnfocusedActions) $ 
         do lift $ tellerWarning "We have reached a dead-end, but there are other available actions."
            modify moveUnfocusedToEnv
+           modify (setFocusedReductionsTo 0)
            -- Ask if the user wants to proceed
            --answer <- askUserIfProceed
            --when (answer) $ startFixpointReductions
@@ -50,7 +51,7 @@ startFixpointReductions = do
     
     -- Before we leave, let us clean the state by moving disabled unfocused actions to the environment 
     modify moveUnfocusedToEnv
-    modify setFocusedReductionsToZero
+    modify (setFocusedReductionsTo 0)
 
 reduceStateIO :: Environment -> ProverStateIO Environment
 reduceStateIO ts = do
@@ -63,7 +64,7 @@ reduceStateIO ts = do
     -- TODO: What is this state called? Quiescence?
     when (g == numFocusedReductions) $ do 
             modify moveUnfocusedToEnv
-            modify setFocusedReductionsToZero
+            modify (setFocusedReductionsTo 0)
             lift $ tellerWarning "Granularity limit reached."
             --answer <- askUserIfProceed
             --when (answer) $ startFixpointReductions
@@ -127,10 +128,22 @@ isValidActionChoice s n =
         (i,_):_ -> if ((i>=0) && (i<n)) then True else False
 
 tryReductionsStateIO :: [StateReduction] -> [Term] -> ProverStateIO [Term]
-tryReductionsStateIO (f:fs) t = tryReductionStateIO' f t >>= tryReductionsStateIO fs
+--tryReductionsStateIO (f:fs) t = tryReductionStateIO' f t >>= tryReductionsStateIO fs
+tryReductionsStateIO (f:fs) t = do
+    newEnv <- tryReductionStateIO' f t 
+    modify (changeEnvTo newEnv) -- TODO: do I need this?
+    let enabledActions = listEnabledActions newEnv
+
+    -- If we are focusing, allow the choice of actions when there are several available
+    gran <- gets granularity
+    fred <- gets focusedReductions
+    when ((fred<gran) && (length enabledActions)>1) $ chooseActionToFocusOn enabledActions
+
+    newEnv <- gets env
+    tryReductionsStateIO fs newEnv
 tryReductionsStateIO []     t = return t
 
-tryReductionStateIO' :: StateReduction -> [Term] -> StateT ProverState IO [Term]
+tryReductionStateIO' :: StateReduction -> [Term] -> ProverStateIO [Term]
 tryReductionStateIO' f ls = return . fromMaybe ls =<< tryReductionStateIO f ls
 
 tryReductionStateIO :: StateReduction -> [Term] -> ProverStateIO (Maybe [Term])

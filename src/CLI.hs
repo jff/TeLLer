@@ -20,7 +20,7 @@ import System.Console.Readline (readline, addHistory)
 import System.Random
 
 import Syntax (Term)
-import Printer (showTerm)
+import Printer (showTerm, showTerms)
 
 
 ----------------------
@@ -112,15 +112,18 @@ askUserIfProceed = do
 
 
 
-choose :: Term -> Term -> IO Term
-choose s t = do putStrLn "Please choose:"
-                putStrLn $ "\t1) " ++ (showTerm s)
-                putStrLn $ "\t2) " ++ (showTerm t)
-                line <- getLine
-                case line of
-                  "1" -> return s
-                  "2" -> return t
-                  _   -> putStrLn "Invalid choice" >> choose s t
+choose :: [Term] -> Term -> Term -> IO Term
+choose env s t = do 
+    tellerPrintLn "Please choose:"
+    tellerPrintLn $ "\t0) " ++ (showTerm s)
+    tellerPrintLn $ "\t1) " ++ (showTerm t)
+    tellerPrintLn $ "\n\ts) show current focused resources"
+    line <- getLine
+    case line of
+     "0" -> return s
+     "1" -> return t
+     "s" -> tellerPrintLn ("Current focused resources: \n" ++ (showTerms env) ++ "\n") >> choose env s t
+     _   -> tellerPrintLn "Invalid choice" >> choose env s t
 
 chooseRandom s t = do
   x <- randomRIO (0, 1)

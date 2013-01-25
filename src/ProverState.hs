@@ -1,10 +1,12 @@
 -- | The module 'ProverState' defines the datatype used as TeLLer's state together with
---   functions that manipulate the state. It is divided in two main sections: 
+--   functions that manipulate the state. It is divided in three main sections: 
 --
---      1. The first section defines pure functions that receive the state
+--      0. The first section defines all the relevant data types
+--
+--      1. The second section defines pure functions that receive the state
 --         as argument and yield a new state.
 --
---      2. The second section defines monadic functions that change the state.
+--      2. The third section defines monadic functions that change the state.
 --         TODO: this needs a major cleanup!
 
 module ProverState where
@@ -16,22 +18,26 @@ import qualified Data.Map as Map
 -- Local imports
 import Syntax (Term)
 import Term (linearizeTensorProducts, listEnabledActionsBy, isAtom)
-import Parser (tts')       -- used to load state from file
+import Parser (parse,term,tts') 
 import Printer (showTerms) -- used to show a state as a string
 import RewriteRules (simplify)
+import UserIO (tellerError)
 
 
--- | Granularity is the measure that we use when focusing. We define its type as 'Int'.
+
+-----------------------------------------------------------------------------------------------
+-- 0. Data types
+-----------------------------------------------------------------------------------------------
+
+-- | Granularity is the measure that we use when focusing. At the moment, we define iWe define its type as 'Int'.
 type Granularity = Int 
 
 -- | Environment is a multiset of terms (here, represented as a sequence)
 type Environment = [Term]
 
-
--- | A trace is a list of triples (r,lr,a), meaning that action identified by 'a' was performed
---   at reduction 'r' and it used (or could have used) the resources created
---   in the reductions listed in lr
---type Trace = [(Int,[Int],Term)]
+-- | A trace is a list of triples (n,ln,a), meaning that action identified by 'a' is associated with
+--   a node n of the causality graph. The list 'ln' is the list of nodes that provide resources that action
+--   'a' can use. Actions are identified as Strings, because that's how they will be shown in the causality graph.
 type Trace = [(Int,[Int],String)]
 
 -- | ProverState is the datatype that models TeLLer's state.
@@ -40,8 +46,11 @@ data ProverState = ProverState
       unfocused :: [Term], -- ^ The field 'unfocused' is a sequence of actions that are unfocused and will not be used 
                            --   in the focused reductions.
       actionTrace :: Trace, -- ^ The field 'actionTrace' represents the causality trace. 
-      originOfResources :: Map.Map Term [Int],
-      _cGraphNode :: Int, -- ^ Internal identifier of the causality graph nodes
+      originOfResources :: Map.Map Term [Int],  -- ^ The map 'originOfResources' maps resources to the list of nodes where they are available.
+                                                --   The number of the node is listed as many times as there are resources.
+                                                --   For example, if the action associated with node 2 produces two Bs, then the map
+                                                --   would associate B with [2,2].
+      _cGraphNode :: Int, -- ^ Internal identifier used for the causality graph nodes
       
       granularity :: Granularity, -- ^ The field 'granularity' defines the number of focused reductions to be performed.
       focusedReductions :: Int,   -- ^ The field 'focusedReductions' is a counter for the number of focused reductions performed so far.
@@ -64,8 +73,9 @@ initialState = ProverState { env = [],
 -- | The Monad Transformer that stacks our state with IO
 type ProverStateIO a = StateT ProverState IO a
 
-
---- Pure functions
+-----------------------------------------------------------------------------------------------
+--- 1. Pure functions
+-----------------------------------------------------------------------------------------------
 changeEnvTo :: [Term] -> ProverState -> ProverState
 changeEnvTo newEnv state = state { env = linearizeTensorProducts newEnv } 
 
@@ -89,11 +99,11 @@ changeDebugMode state = state {debugMode = not (debugMode state)}
 changeGranularityTo :: Int -> ProverState -> ProverState
 changeGranularityTo n state = state { granularity = n }
 
-setFocusedReductionsToZero :: ProverState -> ProverState
-setFocusedReductionsToZero state = state { focusedReductions = 0 }
+setFocusedReductionsTo :: Int -> ProverState -> ProverState
+setFocusedReductionsTo n state = state { focusedReductions = n }
 
-setTotalReductionsToZero :: ProverState -> ProverState
-setTotalReductionsToZero state = state { totalReductions = 0 }
+setTotalReductionsTo :: Int -> ProverState -> ProverState
+setTotalReductionsTo n state = state { totalReductions = n }
 
 setCountersToZero :: ProverState -> ProverState
 setCountersToZero state = state { totalReductions = 0, focusedReductions = 0 }
@@ -122,11 +132,10 @@ changeMapOR l orNode state =
     in state {originOfResources = newMap}
 
 
-
-
 showState :: ProverState -> String
 showState state = "Current focused resources: \n"   ++ showTerms (env state) ++ "\n" ++
                   "Current unfocused resources: \n" ++ showTerms (unfocused state) ++ "\n"
+
 
 
 initOriginMapWithAtoms :: ProverState -> ProverState
@@ -138,15 +147,18 @@ initOriginMapWithAtoms state =
     in state {originOfResources = newMap}
 
 
---- Non pure functions
-t = withStateT changeDebugMode 
-x :: ProverStateIO ()
-x = do
-    state <- get
-    lift $ print (debugMode state)
-    return ()
+-----------------------------------------------------------------------------------------------
+-- 2. Non pure functions
+-----------------------------------------------------------------------------------------------
 
-changeStateWith f = withStateT f get >>= put
+-- | 'changeEnvWith' receives a function 'f' and a string 's' describing resources. If it
+--   successfully parses 's', then it changes the state using function 'f'.
+changeEnvWith :: ([Term] -> ProverState -> ProverState) -> String -> ProverStateIO ()
+changeEnvWith f t = do
+    case parse term "<interactive>" t of
+     Left err -> lift $ tellerError "ERROR: Parsing error. Please try again." 
+     Right r  -> modify (f r) 
+
 
 
 -- TODO: define increaseIntField and send as argument the field? Is it possible?

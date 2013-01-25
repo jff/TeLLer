@@ -4,8 +4,26 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
 import Data.List (sort, group, nub)
 
+import Data.Graph.Inductive.Graph (Node)
+import Data.GraphViz (nonClusteredParams,toLabel,fmtNode, globalAttributes, fmtEdge, Attributes(..))
+
+-- Local imports
 import ProverState (Trace, ProverState(..))
 import Syntax (Term)
+
+
+-- Configuration parameters of the causality graph (Graphviz dependent)
+cGraphParams = nonClusteredParams { 
+    globalAttributes = [],
+    fmtNode = cGraphLabelNodes,
+    fmtEdge = const []
+}
+
+cGraphLabelNodes :: (Node,String) -> Attributes
+cGraphLabelNodes (n,l) = [toLabel l]
+
+
+
 
 mkCGraph :: Trace -> ([(Int,String)],[(Int,Int, String)])
 mkCGraph = (id >< concat) . unzip . map (split toNode toLEdge)
@@ -34,6 +52,7 @@ getResourceNodeList state needs =
         resList = map (\(r,q) -> (r,q,getListFromMap r)) aggRes
     in resList
 
+-- TODO: introduce names for the types
 partitionResourceNodeList :: [(Term,Int,[Int])] -> ([(Term,Int,[Int])],[(Term,Int,[Int])])
 partitionResourceNodeList l = break multipleNodes l
     where multipleNodes (_,_,nds) = (length . nub) nds > 1
