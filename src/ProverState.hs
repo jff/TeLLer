@@ -61,7 +61,7 @@ data ProverState = ProverState
 -- | The initial state.
 initialState = ProverState { env = [], 
                              unfocused = [], 
-                             actionTrace = [(0,[],"Big Bang")], 
+                             actionTrace = [(0,[],"\\emptyset_0")], 
                              originOfResources = Map.empty,
                              _cGraphNode = 0,
                              granularity = 2, 

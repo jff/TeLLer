@@ -17,7 +17,8 @@ genTerm n | n > 0 = oneof [
   ]
 
 genBinaryTerm n = do
-  connective <- elements [(:*:), (:$:), (:-@:), (:&:), (:+:)]
+  --connective <- elements [(:*:), (:$:), (:-@:), (:&:), (:+:)]
+  connective <- elements [(:*:), (:$:), (:&:), (:+:)]
   l <- genTerm n
   r <- genTerm n
   return (l `connective` r)
@@ -44,7 +45,8 @@ instance Arbitrary Term where
 
   shrink (a :*:  b) = shrinkDeep (:*:)  (a, b)
   shrink (a :$:  b) = shrinkDeep (:$:)  (a, b)
-  shrink (a :-@: b) = shrinkDeep (:-@:) (a, b)
+  --shrink (a :-@: b) = shrinkDeep (:-@:) (a, b)
+  --shrink ((:-@:) a b _) = shrinkDeep (:-@:) (a, b)
   shrink (a :&:  b) = shrinkDeep (:&:)  (a, b)
   shrink (a :+:  b) = shrinkDeep (:+:)  (a, b)
 

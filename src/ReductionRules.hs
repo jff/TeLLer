@@ -11,14 +11,18 @@ import Printer (showTerm)
 import Term (detensor, linearizeTensorProducts, isSimple, isEnabledAction)
 import UserIO (choose, chooseRandom, tellerWarning, tellerDebug)
 import CGraph (getResourceNodeList, partitionResourceNodeList)
+import Util (third)
 
 type StateReduction = (Term, Environment) -> ProverStateIO (Maybe Environment)
 
 reduceLollyStateIO :: StateReduction
-reduceLollyStateIO (t@(a :-@: b), ts) = 
-    removeProductGiving' (\ts' -> b:ts') a b ts
-reduceLollyStateIO (t@(OfCourse (a :-@: b)), ts) = do
-    reduceLollyStateIO (a :-@:b, t:ts)
+--reduceLollyStateIO (t@(a :-@: b), ts) = 
+reduceLollyStateIO (t@((:-@:) a b _), ts) = 
+    removeProductGiving' (\ts' -> b:ts') t ts
+--reduceLollyStateIO (t@(OfCourse (a :-@: b)), ts) = do
+    --reduceLollyStateIO (a :-@:b, t:ts)
+reduceLollyStateIO (t@(OfCourse ((:-@:) a b d)), ts) = do
+    reduceLollyStateIO ((:-@:) a b d, t:ts)
 --    removeProductGiving' (\ts' -> t:ts') a b ts
     --removeProductGiving' (\ts' -> b:t:ts') a b ts
 --    gran <- gets granularity
@@ -28,12 +32,13 @@ reduceLollyStateIO (t@(OfCourse (a :-@: b)), ts) = do
 reduceLollyStateIO _ = return $ Nothing
 
 
+-- | FIXME: should I define it for other terms? Doesn't make sense, since its calls are controlled...
 removeProductGiving' ::
   ([Term] -> [Term]) ->
-  Term -> Term -> [Term] ->
+  Term -> [Term] ->
   ProverStateIO (Maybe [Term])
 
-removeProductGiving' f a b ts
+removeProductGiving' f ((:-@:) a b actionDesc) ts
   | isSimple a =
     --case removeProduct' a ts of
     -- TODO: make sure that myRemoveFunction is correct! and change its name to resourcesAreAvailable
@@ -47,8 +52,6 @@ removeProductGiving' f a b ts
         lift $ reduceMessage a b
         g <- gets granularity
         fr <- gets focusedReductions
---        lift $ putStrLn $ "Granularity " ++ (show g)
---        lift $ putStrLn $ "Focused Steps " ++ (show fr)
 
         -- Terms b were just introduced. If b enables unfocused actions,
         -- bring them to the environment.
@@ -64,22 +67,27 @@ removeProductGiving' f a b ts
 
         -- change trace and map
         state <- get
-        --treductions <- gets totalReductions
         nodeCount <- gets _cGraphNode
         originRes <- gets originOfResources
 
         let needs = linearizeTensorProducts [a]
         let nodeList = getResourceNodeList state needs
         let flatNodeList = nub $ concatMap (\(_,_,c)->c) nodeList
-        let (oneNode,multipleNodes) = partitionResourceNodeList nodeList
+        let (multipleNodes, oneNode) = partitionResourceNodeList nodeList
 
-        -- FIXME: se precisar de 2 recursos e um for OR e o outro nao???
-        if(multipleNodes==[]) then modify (addActionToTrace (nodeCount,flatNodeList,showTerm (a :-@: b)))
+        let nodeLabel = fromMaybe (showTerm ((:-@:) a b Nothing)) actionDesc
+        if(multipleNodes==[]) then modify (addActionToTrace (nodeCount,flatNodeList,nodeLabel))
                  else do
-                        modify (addActionToTrace (nodeCount,flatNodeList,"OR"))
+                        let multipleNodesNonDup = nub (concatMap third multipleNodes)
+                        modify (addActionToTrace (nodeCount,multipleNodesNonDup ,"OR"))
                         modify incrementGraphNodeCount
                         nodeCount <- gets _cGraphNode
-                        modify (addActionToTrace (nodeCount,[nodeCount-1],showTerm (a :-@: b)))
+                        
+                        -- If this action also depends of resources that originate from a single node, we need
+                        -- to establish those connections in the causality graph
+                        let oneNodeNonDup = nub (concatMap third oneNode)
+                        if (oneNodeNonDup == []) then modify (addActionToTrace (nodeCount,[nodeCount-1],nodeLabel))
+                                                 else modify (addActionToTrace (nodeCount,(nodeCount-1):oneNodeNonDup,nodeLabel))
 
         -- The map is changed if oneNode is /= from []
         modify (changeMapNonOR oneNode)
@@ -189,7 +197,8 @@ myRemoveFunction atoms env =
 
 -- TODO: change this to CLI?
 reduceMessage :: Term -> Term -> IO ()
-reduceMessage a b = tellerWarning $ concat ["reducing: ",   showTerm (a :-@: b),
+--reduceMessage a b = tellerWarning $ concat ["reducing: ",   showTerm (a :-@: b),
+reduceMessage a b = tellerWarning $ concat ["reducing: ",   showTerm ((:-@:) a b Nothing),
                                             ", removing: ", showTerm a,
                                             ", adding: ",   showTerm b]
 

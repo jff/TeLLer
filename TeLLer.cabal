@@ -35,4 +35,5 @@ Executable TeLLer
     mtl,
     readline,
     graphviz,
-    fgl
+    fgl,
+    text

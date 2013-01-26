@@ -24,13 +24,14 @@ listEnabledActionsBy terms env = filter (isEnabledAction (concatMap detensor ter
 
 -- TODO, FIXME: Improve efficiency
 isEnabledAction :: [Term] -> Term -> Bool
-isEnabledAction env (t1 :-@: t2) = let resources = linearizeTensorProducts [t1] --and $  elem <$> (linearizeTensorProducts [t1]) <*> [env]
-                                       linearEnv = linearizeTensorProducts env
-                                       resourcesAvailable = (resources \\ (intersect linearEnv resources)) == []
-                                   in  (isSimple t1) && resourcesAvailable
+isEnabledAction env ((:-@:) t1 t2 _) = 
+    let resources = linearizeTensorProducts [t1] --and $  elem <$> (linearizeTensorProducts [t1]) <*> [env]
+        linearEnv = linearizeTensorProducts env
+        resourcesAvailable = (resources \\ (intersect linearEnv resources)) == []
+    in  (isSimple t1) && resourcesAvailable
 isEnabledAction env (t1 :&: t2)  = isEnabledAction env t1 && isEnabledAction env t2
 isEnabledAction env (t1 :+: t2)  = isEnabledAction env t1 || isEnabledAction env t2
-isEnabledAction env (OfCourse (t1 :-@: t2))  = isEnabledAction env (t1 :-@: t2)
+isEnabledAction env (OfCourse ((:-@:) t1 t2 d))  = isEnabledAction env ((:-@:) t1 t2 d)
 isEnabledAction _ _              = False
 
 linearizeTensorProducts :: [Term] -> [Term]

@@ -13,17 +13,12 @@ termMap f t = go t
         go (WhyNot t)    = WhyNot (go t)
         go (l :*: r)     = go l :*: go r
         go (l :$: r)     = go l :$: go r
-        go (l :-@: r)    = go l :-@: go r
+        --go (l :-@: r)    = go l :-@: go r
+        go ((:-@:) l r d)    = (:-@:) (go l) (go r) d
         go (l :&: r)     = go l :&: go r
         go (l :+: r)     = go l :+: go r
         go t | unitary t = t
 
 
---- String utilities
-{--
-removeTrailingSpace :: String -> String
-removeTrailingSpace s | last s == ' ' = init s
-                      | otherwise     = s
-
---}
-
+third :: (a,b,c) -> c
+third (_,_,c) = c

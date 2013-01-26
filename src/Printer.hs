@@ -26,7 +26,8 @@ showsTerm d (WhyNot t)  = showParen (d > prec) $
 
 showsTerm d (l :*:  r) = showsTermOp 6 "*"  d (l, r)
 showsTerm d (l :$:  r) = showsTermOp 6 "$"  d (l, r)
-showsTerm d (l :-@: r) = showsTermOp 2 "  -@  " d (l, r)
+--showsTerm d (l :-@: r) = showsTermOp 2 "  -@  " d (l, r)
+showsTerm d ((:-@:) l r desc) = showsTermOp 2 "  -@  " d (l, r)
 
 showsTerm d (l :&: r) = showsTermOp 4 " & " d (l, r)
 showsTerm d (l :+: r) = showsTermOp 4 " + " d (l, r)

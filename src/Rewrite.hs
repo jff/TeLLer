@@ -30,7 +30,8 @@ rewrite' rules t = rewrite rules (recur (rewrite rules t))
         recur (WhyNot t)   = WhyNot   $ walk t
         recur (a :*: b)    = walk a :*:  walk b
         recur (a :$: b)    = walk a :$:  walk b
-        recur (a :-@: b)   = walk a :-@: walk b
+        --recur (a :-@: b)   = walk a :-@: walk b
+        recur ((:-@:) a b d)   = (:-@:) (walk a) (walk b) d
         recur (a :&: b)    = walk a :&:  walk b
         recur (a :+: b)    = walk a :+:  walk b
         recur t            = t
@@ -67,7 +68,8 @@ match (a :$: b) (c :$: d) = crossMatch (a, b) (c, d)
 match (a :&: b) (c :&: d) = crossMatch (a, b) (c, d)
 match (a :+: b) (c :+: d) = crossMatch (a, b) (c, d)
 
-match (a :-@: b) (c :-@: d) = match a c `merge` match b d
+--match (a :-@: b) (c :-@: d) = match a c `merge` match b d
+match ((:-@:) a b _) ((:-@:) c d _) = match a c `merge` match b d
 
 match Top Top       = Just Map.empty
 match Bottom Bottom = Just Map.empty

@@ -7,7 +7,7 @@ data Term
      -- Multiplicatives
      | Term :*: Term  -- Conjunction
      | Term :$: Term  -- Disjunction
-     | Term :-@: Term -- Linear Implication
+     | (:-@:) Term Term (Maybe String) -- Linear Implication. Actions have a name (String) that is used in the causality graph.
 
      -- Additives
      | Term :&: Term  -- Conjunciton

@@ -9,7 +9,7 @@ import Text.ParserCombinators.Parsec
 
 term :: Parser [Term]
 term = do spaces
-          terms <- sepEndBy expr (optional (symbol "."))
+          terms <- sepEndBy expr (optional (symbol ".")) 
           eof
           return terms
 
@@ -28,7 +28,12 @@ negs x = do
     Nothing -> return x
 
 
-expr  = expr1 `chainr1` imp
+expr  = do 
+    t <- expr1 `chainr1` imp 
+    d <- optionMaybe (despace resourceDescription)
+    case t of
+        (:-@:) t1 t2 Nothing -> return $ (:-@:) t1 t2 d
+        _ -> return t
 expr1 = expr2 `chainr1` add
 expr2 = expr3 `chainr1` mul
 expr3 = expt
@@ -40,10 +45,9 @@ par    = symbol "$" `construct` (:$:)
 
 
 imp    = rlolly <|> (symbol "-"  >> (lolly <|> arrow))
-lolly  = symbol "@"  `construct` (:-@:)
-arrow  = symbol "!"  `construct` (\l r -> OfCourse (l :-@: r))
-rlolly = symbol "@-" `construct` flip (:-@:)
-
+lolly  = symbol "@"  `construct` (\l r -> (:-@:) l r Nothing)
+arrow  = symbol "!"  `construct` (\l r -> OfCourse ((:-@:) l r Nothing))
+rlolly = symbol "@-" `construct` (\l r -> (:-@:) r l Nothing)
 
 add    = with <|> plus
 with   = symbol "&" `construct` (:&:)
@@ -76,6 +80,21 @@ parens p = do symbol "("
               symbol ")"
               return inner
 
+{--
+quoted d = do 
+    symbol "\""
+    inner <- d
+    symbol "\""
+    return inner
+--}
+
+resourceDescription = do
+    char '"'
+    p <- many (noneOf "\"")
+    char '"'
+    return p
+
+
 
 -- Utility Functions --
 
@@ -105,3 +124,6 @@ giving p x = p >> return x
 
 construct :: Parser b -> (a -> a -> a) -> Parser (a -> a -> a)
 construct p c = p >> return c
+
+constructMaybeDesc :: Parser b -> (a -> a -> d -> a) -> Parser (a -> a -> d -> a)
+constructMaybeDesc p c = p >> return c

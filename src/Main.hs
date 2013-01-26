@@ -167,7 +167,8 @@ printGraph filename = do
         trace <- gets actionTrace
         let (nds,eds) = mkCGraph trace
         let cgr = mkGraph nds eds :: Gr String String
-        lift $ runGraphviz (graphToDot cGraphParams cgr) Jpeg filename
+        lift $ runGraphviz (graphToDot cGraphParams cgr) Pdf filename
+        lift $ runGraphviz (graphToDot cGraphParams cgr) DotOutput (filename++".dot")
         return ()
 
 -- | 'printState' prints the state given as argument. The output is defined by

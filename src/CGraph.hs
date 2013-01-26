@@ -2,10 +2,12 @@ module CGraph where
 
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
-import Data.List (sort, group, nub)
+import Data.List (sort, group, nub, partition)
 
 import Data.Graph.Inductive.Graph (Node)
-import Data.GraphViz (nonClusteredParams,toLabel,fmtNode, globalAttributes, fmtEdge, Attributes(..))
+import Data.GraphViz hiding (toNode)
+import Data.GraphViz.Attributes.Complete
+import qualified Data.Text.Lazy as T
 
 -- Local imports
 import ProverState (Trace, ProverState(..))
@@ -14,19 +16,27 @@ import Syntax (Term)
 
 -- Configuration parameters of the causality graph (Graphviz dependent)
 cGraphParams = nonClusteredParams { 
-    globalAttributes = [],
+    globalAttributes = [ GraphAttrs { attrs = [BgColor [X11Color Transparent]]}],
     fmtNode = cGraphLabelNodes,
     fmtEdge = const []
 }
 
 cGraphLabelNodes :: (Node,String) -> Attributes
-cGraphLabelNodes (n,l) = [toLabel l]
-
+cGraphLabelNodes (n,"OR") = [toLabel "OR", Shape BoxShape, BgColor [X11Color Gray]]
+-- I assume that any description that starts with \\ is a LaTeX description
+cGraphLabelNodes (n,l@('\\':_)) = [toLabel l, BgColor [X11Color Yellow], UnknownAttribute (T.pack "texmode") (T.pack "math")]
+cGraphLabelNodes (n,l) = [toLabel l] -- TODO: use color to identify how these were triggered, Color [X11Color Red]]
 
 
 
 mkCGraph :: Trace -> ([(Int,String)],[(Int,Int, String)])
 mkCGraph = (id >< concat) . unzip . map (split toNode toLEdge)
+
+removeBigBang :: ([(Int,String)],[(Int,Int, String)]) -> ([(Int,String)],[(Int,Int, String)])
+removeBigBang (n,e) = (filter fstZero n, filter (\t -> fst3Zero t && snd3Zero t) e)
+    where fstZero (a,b)    = a/=0
+          fst3Zero (a,b,c) = a/=0
+          snd3Zero (a,b,c) = b/=0
 
 toNode :: (Int,[Int],String) -> (Int, String)
 toNode (r,l,a) = (r,a)
@@ -53,6 +63,8 @@ getResourceNodeList state needs =
     in resList
 
 -- TODO: introduce names for the types
+-- First element of pair: multiple nodes
+-- Second element of the pair: resources available from only one node
 partitionResourceNodeList :: [(Term,Int,[Int])] -> ([(Term,Int,[Int])],[(Term,Int,[Int])])
-partitionResourceNodeList l = break multipleNodes l
+partitionResourceNodeList l = partition multipleNodes l
     where multipleNodes (_,_,nds) = (length . nub) nds > 1
