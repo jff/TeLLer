@@ -89,10 +89,11 @@ removeProductGiving' f ((:-@:) a b actionDesc) ts
                         if (oneNodeNonDup == []) then modify (addActionToTrace (nodeCount,[nodeCount-1],nodeLabel))
                                                  else modify (addActionToTrace (nodeCount,(nodeCount-1):oneNodeNonDup,nodeLabel))
 
+        nodeCount <- gets _cGraphNode
         -- The map is changed if oneNode is /= from []
         modify (changeMapNonOR oneNode)
         -- The map is changed if multipleNodes is /= from []
-        modify (changeMapOR multipleNodes nodeCount)
+        modify (changeMapOR multipleNodes (nodeCount-1))
 
         -- Change map with the newly introduced resources
         let introduces = linearizeTensorProducts [b]

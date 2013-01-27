@@ -80,7 +80,20 @@ changeEnvTo :: [Term] -> ProverState -> ProverState
 changeEnvTo newEnv state = state { env = linearizeTensorProducts newEnv } 
 
 addToEnv :: [Term] -> ProverState -> ProverState
-addToEnv resources state = state {env = (env state)++(linearizeTensorProducts resources)} 
+addToEnv resources state = 
+    let reductions = totalReductions state
+        nodeNumber = if (reductions>0) then (_cGraphNode state) + 1 else 0
+        atoms = filter isAtom resources
+        newMap = foldr (\k -> Map.insertWith (++) k [nodeNumber]) (originOfResources state) atoms
+    in if (reductions>0)
+       then state {
+                env = (env state)++(linearizeTensorProducts resources),
+                _cGraphNode = nodeNumber,
+                originOfResources = newMap,
+                actionTrace = (actionTrace state) ++ [(nodeNumber,[],"\\emptyset_"++(show nodeNumber))]
+            } 
+        else
+            state { env = (env state)++(linearizeTensorProducts resources) }
 
 -- TODO: removeFromEnv is quadratic!; can this improve?
 removeFromEnv :: [Term] -> ProverState -> ProverState
