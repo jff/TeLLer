@@ -1,0 +1,4 @@
+A*B
+A-@C "Consume A and create C. Action names are optional."
+C-@D "\textrm{I can use LaTeX code in (math mode). For example: } e=mc^2"
+B-@Z "LaTeX code is meant to be used with dot2tex"
