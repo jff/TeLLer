@@ -5,7 +5,10 @@ import Syntax
 showsTermOp  prec op d (l, r) = showParen (d > prec) $
       showsTerm (prec+1) l . showString op . showsTerm prec r
 
+-- JFF: In order to minimize the changes I have to make from Andy's code,
+-- I'm cheating a bit...
 showTerm :: Term -> String
+showTerm ((:-@:) l r (Just desc)) = (showsTerm 0 ((:-@:) l r Nothing) "") ++ "\t(" ++ desc ++ ")"
 showTerm term = showsTerm 0 term ""
 
 showsTerm :: Int -> Term -> ShowS
@@ -27,7 +30,8 @@ showsTerm d (WhyNot t)  = showParen (d > prec) $
 showsTerm d (l :*:  r) = showsTermOp 6 "*"  d (l, r)
 showsTerm d (l :$:  r) = showsTermOp 6 "$"  d (l, r)
 --showsTerm d (l :-@: r) = showsTermOp 2 "  -@  " d (l, r)
-showsTerm d ((:-@:) l r desc) = showsTermOp 2 "  -@  " d (l, r)
+-- It doesn't matter what the description is, because that is considered in showTerm
+showsTerm d ((:-@:) l r _) = showsTermOp 2 "  -@  " d (l, r)
 
 showsTerm d (l :&: r) = showsTermOp 4 " & " d (l, r)
 showsTerm d (l :+: r) = showsTermOp 4 " + " d (l, r)
@@ -40,7 +44,9 @@ showsTerm d Zero   = showString "0"
 
 
 showTerms [] = "(empty)"
-showTerms ls = showsTerms ls ""
+--showTerms ls = showsTerms ls ""
+showTerms (x:[]) = showTerm x ++ "."
+showTerms (x:xs) = showTerm x ++ ".\n" ++ showTerms xs
 
 showsTerms []     = id
 showsTerms (x:[]) = showsTerm 0 x . showString "."
