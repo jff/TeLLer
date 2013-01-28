@@ -16,23 +16,13 @@ import Util (third)
 type StateReduction = (Term, Environment) -> ProverStateIO (Maybe Environment)
 
 reduceLollyStateIO :: StateReduction
---reduceLollyStateIO (t@(a :-@: b), ts) = 
 reduceLollyStateIO (t@((:-@:) a b _), ts) = 
     removeProductGiving' (\ts' -> b:ts') t ts
---reduceLollyStateIO (t@(OfCourse (a :-@: b)), ts) = do
-    --reduceLollyStateIO (a :-@:b, t:ts)
 reduceLollyStateIO (t@(OfCourse ((:-@:) a b d)), ts) = do
     reduceLollyStateIO ((:-@:) a b d, t:ts)
---    removeProductGiving' (\ts' -> t:ts') a b ts
-    --removeProductGiving' (\ts' -> b:t:ts') a b ts
---    gran <- gets granularity
---    fres <- gets focusedReductions
---    if (gran-fres>0) then removeProductGiving' (\ts' -> b:t:ts') a b ts
---                     else return Nothing
 reduceLollyStateIO _ = return $ Nothing
 
 
--- | FIXME: should I define it for other terms? Doesn't make sense, since its calls are controlled...
 removeProductGiving' ::
   ([Term] -> [Term]) ->
   Term -> [Term] ->
@@ -149,6 +139,16 @@ reduceOneStateIO (One, ts) = do
     return $ Just ts
 reduceOneStateIO _ = return Nothing
 
+-- | 'reduceOfCourseAtom' introduces an atom in case it isn't already there
+{--
+reduceOfCourseAtomStateIO :: StateReduction
+reduceOfCourseAtomStateIO (OfCourse t@(Atom a), ts) = do
+    if t `elem` ts then return Nothing
+                   else do modify (changeEnvTo (t:(OfCourse t):ts))
+                           return $ Just (t:(OfCourse t):ts)
+reduceOfCourseAtomStateIO _ = return Nothing
+--}
+
 
 {--
 reduceOfCourseLollyIO :: IOReduction
@@ -188,12 +188,17 @@ removeProduct _  [] = Nothing
 -- FIXME, TODO: REVIEW, BECAUSE BECAUSE INTERSECT DOES NOT WORK AS EXPECTED! IT IS NOT COMMUTATIVE.
 myRemoveFunction :: Term -> [Term] -> Maybe [Term]
 myRemoveFunction atoms env = 
-    let newAtoms = linearizeTensorProducts [atoms]
-        newEnv   = linearizeTensorProducts env
-        int = intersect newEnv newAtoms
+    let need = linearizeTensorProducts [atoms] -- what we need
+        available   = linearizeTensorProducts env     -- what we have
+        int = intersect available need
+        intPersistent = intersect available (map OfCourse need) -- check for persistent resources
+        simpleNotAvailable = need \\ int
+        persistentNeeded = map OfCourse simpleNotAvailable
+        nonExistent = persistentNeeded \\ intPersistent -- nonExistent = map ! (need\\int)\\intPersistent
     in 
-        if (newAtoms \\ int == [])
-        then Just $ newEnv \\ newAtoms
+        --if (need \\ int) == [])
+        if (nonExistent == []) -- then, we have all that we need!
+        then Just $ available \\ need
         else Nothing
 
 -- TODO: change this to CLI?

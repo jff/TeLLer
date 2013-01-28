@@ -93,7 +93,6 @@ reduceStateIO ts = do
     tryReductionsStateIO reductions (linearizeTensorProducts newEnv)
          where reductions  = 
                 [
-                   -- reduceOfCourseLollyIO,
                    reduceLollyStateIO,
                    reduceWithStateIO,
                    reducePlusStateIO,

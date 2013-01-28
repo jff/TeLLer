@@ -17,7 +17,7 @@ import qualified Data.Map as Map
 
 -- Local imports
 import Syntax (Term)
-import Term (linearizeTensorProducts, listEnabledActionsBy, isAtom)
+import Term (linearizeTensorProducts, listEnabledActionsBy, isAtomicResource)
 import Parser (parse,term,tts') 
 import Printer (showTerms) -- used to show a state as a string
 import RewriteRules (simplify)
@@ -83,7 +83,7 @@ addToEnv :: [Term] -> ProverState -> ProverState
 addToEnv resources state = 
     let reductions = totalReductions state
         nodeNumber = if (reductions>0) then (_cGraphNode state) + 1 else 0
-        atoms = filter isAtom resources
+        atoms = filter isAtomicResource resources
         newMap = foldr (\k -> Map.insertWith (++) k [nodeNumber]) (originOfResources state) atoms
     in if (reductions>0)
        then state {
@@ -150,11 +150,11 @@ showState state = "Current focused resources: \n"   ++ showTerms (env state) ++ 
                   "Current unfocused resources: \n" ++ showTerms (unfocused state) ++ "\n"
 
 
-
+-- TODO: Not a good idea to have this here and in addToEnv...
 initOriginMapWithAtoms :: ProverState -> ProverState
 initOriginMapWithAtoms state =
     let ctx = linearizeTensorProducts $ env state
-        atoms = filter isAtom ctx
+        atoms = filter isAtomicResource ctx
         omap = originOfResources state
         newMap = foldr (\k -> Map.insertWith (++) k [0]) omap atoms
     in state {originOfResources = newMap}

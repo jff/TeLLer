@@ -11,7 +11,7 @@ import qualified Data.Text.Lazy as T
 
 -- Local imports
 import ProverState (Trace, ProverState(..))
-import Syntax (Term)
+import Syntax (Term(..))
 
 
 -- Configuration parameters of the causality graph (Graphviz dependent)
@@ -58,7 +58,7 @@ getResourceNodeList state needs =
         -- aggRes agglomerates resources. Example: [A,B,C,B] is transformed into [(A,1), (B,2), (C,1)]
         aggRes = map (\l -> (head l, length l)) . group . sort $ needs
         lookupInMap = (flip Map.lookup) nodeRes
-        getListFromMap r = ((fromMaybe []) . lookupInMap) r
+        getListFromMap r = (((fromMaybe []) . lookupInMap) r) ++ (((fromMaybe []) . lookupInMap) (OfCourse r)) -- search for r and !r
         resList = map (\(r,q) -> (r,q,getListFromMap r)) aggRes
     in resList
 
