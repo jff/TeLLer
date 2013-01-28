@@ -194,7 +194,7 @@ myRemoveFunction atoms env =
         intPersistent = intersect available (map OfCourse need) -- check for persistent resources
         simpleNotAvailable = need \\ int
         persistentNeeded = map OfCourse simpleNotAvailable
-        nonExistent = persistentNeeded \\ intPersistent -- nonExistent = map ! (need\\int)\\intPersistent
+        nonExistent = persistentNeeded \\ (concat . replicate (length persistentNeeded)) intPersistent -- nonExistent = map ! (need\\int)\\intPersistent
     in 
         --if (need \\ int) == [])
         if (nonExistent == []) -- then, we have all that we need!

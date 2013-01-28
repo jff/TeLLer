@@ -36,7 +36,7 @@ isEnabledAction env ((:-@:) t1 t2 _) =
         intPersistent = intersect available (map OfCourse need) -- check for persistent resources
         simpleNotAvailable = need \\ int
         persistentNeeded = map OfCourse simpleNotAvailable
-        nonExistent = persistentNeeded \\ intPersistent -- nonExistent = map ! (need\\int)\\intPersistent
+        nonExistent = persistentNeeded \\ (concat . replicate (length persistentNeeded)) intPersistent -- nonExistent = map ! (need\\int)\\intPersistent
         --resourcesAvailable = (need \\ (intersect available need)) == []
         resourcesAvailable = nonExistent == []
     in  (isSimple t1) && resourcesAvailable
