@@ -2,7 +2,7 @@ module CGraph where
 
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
-import Data.List (sort, group, nub, partition)
+import Data.List (sort, group, nub, partition, (\\))
 
 import Data.Graph.Inductive.Graph (Node)
 import Data.GraphViz hiding (toNode)
@@ -22,15 +22,16 @@ cGraphParams = nonClusteredParams {
 }
 
 cGraphLabelNodes :: (Node,String) -> Attributes
-cGraphLabelNodes (n,"OR") = [toLabel "OR", Shape BoxShape, BgColor [X11Color Gray]]
+cGraphLabelNodes (n,'_':'l':'_':l) = [toLabel l, BgColor [X11Color Gray], style dashed, style filled]
+cGraphLabelNodes (n,_:_:_:"OR") = [toLabel "OR", Shape BoxShape, BgColor [X11Color Gray]]
 -- I assume that any description that starts with \\ is a LaTeX description
-cGraphLabelNodes (n,l@('\\':_)) = [toLabel l, BgColor [X11Color Yellow], UnknownAttribute (T.pack "texmode") (T.pack "math")]
-cGraphLabelNodes (n,l) = [toLabel l] -- TODO: use color to identify how these were triggered, Color [X11Color Red]]
+cGraphLabelNodes (n,(_:_:_:l@('\\':_))) = [toLabel l, BgColor [X11Color Yellow], UnknownAttribute (T.pack "texmode") (T.pack "math")]
+cGraphLabelNodes (n,l) = [toLabel (drop 3 l)] -- TODO: use color to identify how these were triggered, Color [X11Color Red]]
 
 
 
 mkCGraph :: Trace -> ([(Int,String)],[(Int,Int, String)])
-mkCGraph = (id >< concat) . unzip . map (split toNode toLEdge)
+mkCGraph t = (id >< concat) . unzip . map (split (toNode t) toLEdge) $ t
 
 removeBigBang :: ([(Int,String)],[(Int,Int, String)]) -> ([(Int,String)],[(Int,Int, String)])
 removeBigBang (n,e) = (filter fstZero n, filter (\t -> fst3Zero t && snd3Zero t) e)
@@ -38,8 +39,13 @@ removeBigBang (n,e) = (filter fstZero n, filter (\t -> fst3Zero t && snd3Zero t)
           fst3Zero (a,b,c) = a/=0
           snd3Zero (a,b,c) = b/=0
 
-toNode :: (Int,[Int],String) -> (Int, String)
-toNode (r,l,a) = (r,a)
+toNode :: Trace -> (Int,[Int],String) -> (Int, String)
+toNode trace (r,l,a) = 
+    let allNodes  = nub $ map (\(f,s,t) -> f) trace
+        fromNodes = nub $ concatMap (\(f,s,t) -> s) trace -- nodes which have an outgoing arrow
+        leaves    = allNodes\\fromNodes
+    in if(r `elem` leaves) then (r,"_l_"++a) -- origin action
+                           else (r,"_o_"++a)  -- leave action
 
 toLEdge :: (Int,[Int],String) -> [(Int, Int, String)]
 toLEdge (r,l,a) = [(from,r,"") | from <- l]
