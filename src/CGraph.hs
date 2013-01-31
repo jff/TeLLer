@@ -58,6 +58,7 @@ split f g a = (f a, g a)
 
 
 -- Operations on the state
+-- returns [(atom,quantity,[nodes providing atom])]
 getResourceNodeList :: ProverState -> [Term] -> [(Term,Int,[Int])]
 getResourceNodeList state needs = 
     let nodeRes = originOfResources state

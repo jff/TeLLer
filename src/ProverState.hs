@@ -55,6 +55,8 @@ data ProverState = ProverState
       granularity :: Granularity, -- ^ The field 'granularity' defines the number of focused reductions to be performed.
       focusedReductions :: Int,   -- ^ The field 'focusedReductions' is a counter for the number of focused reductions performed so far.
       totalReductions :: Int,     -- ^ The field 'totalReductions' is a counter for the total number of reductions performed so far.
+      btTraces :: [Trace],
+      btStack :: [ProverState],
       debugMode :: Bool           -- ^ The field 'debugMode' defines whether TeLLer runs in debug mode.
     }
 
@@ -67,7 +69,9 @@ initialState = ProverState { env = [],
                              granularity = 2, 
                              focusedReductions = 0, 
                              totalReductions = 0, 
-                             debugMode = False
+                             debugMode = False,
+                             btStack = [],
+                             btTraces = []
                             }
 
 -- | The Monad Transformer that stacks our state with IO

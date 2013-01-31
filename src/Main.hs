@@ -169,6 +169,14 @@ printGraph filename = do
         let cgr = mkGraph nds eds :: Gr String String
         lift $ runGraphviz (graphToDot cGraphParams cgr) Pdf filename
         lift $ runGraphviz (graphToDot cGraphParams cgr) DotOutput (filename++".dot")
+
+        {-- EXPERIMENTAL: generate all graphs --}
+        allTraces <- gets btTraces
+        let allGraphs = map ((uncurry mkGraph) . mkCGraph) allTraces :: [Gr String String]
+        let numbered = zip [0..] allGraphs 
+        let producePDF (n,g) = runGraphviz (graphToDot cGraphParams g) Pdf ('_':(show n)++".pdf")
+        lift $ sequence_ $ map producePDF numbered
+
         return ()
 
 -- | 'printState' prints the state given as argument. The output is defined by

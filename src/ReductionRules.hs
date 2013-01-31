@@ -106,7 +106,12 @@ reduceWithStateIO (term@(a :&: b), ts)
  | isEnabledAction ts term =
     do 
        t <- lift $ choose (term:ts) a b  -- ask the user what action to choose
+       savedState <- get
+       let alternative = savedState {env = ([a,b]\\[t])++ts }
        modify (changeEnvTo (t:ts))
+       state <- get
+       lift $ putStrLn $ "STACK: " ++ show (env alternative)
+       put (state {btStack = alternative:(btStack state)})
        return $ Just (t:ts) 
  | otherwise = return Nothing
 reduceWithStateIO _ = return Nothing
@@ -120,13 +125,26 @@ reducePlusStateIO (term@(a :+: b), ts)
  -- Perform only if one of the choices is enabled. If both are available, choose randomly.
  | (isEnabledAction ts a) && (isEnabledAction ts b) = 
     do t <- lift $ chooseRandom a b  
+       savedState <- get
+       let alternative = savedState {env = ([a,b]\\[t])++ts }
+       lift $ putStrLn $ "Alt:" ++ show (env alternative)
        modify (changeEnvTo (t:ts))
+       state <- get
+       put (state {btStack = alternative:(btStack state)})
        return $ Just (t:ts) 
  | (isEnabledAction ts a) && (not (isEnabledAction ts b)) = 
-    do modify (changeEnvTo (a:ts))
+    do savedState <- get
+       let alternative = savedState {env = (b:ts) }
+       modify (changeEnvTo (a:ts))
+       state <- get
+       put (state {btStack = alternative:(btStack state)})
        return $ Just (a:ts) 
  | (not (isEnabledAction ts a)) && (isEnabledAction ts b) = 
-    do modify (changeEnvTo (b:ts))
+    do savedState <- get
+       let alternative = savedState {env = (a:ts) }
+       modify (changeEnvTo (b:ts))
+       state <- get
+       put (state {btStack = alternative:(btStack state)})
        return $ Just (b:ts) 
  | otherwise = return Nothing
 reducePlusStateIO _ = return Nothing
