@@ -2,9 +2,9 @@ module CGraph where
 
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
-import Data.List (sort, group, nub, partition, (\\))
+import Data.List (sort, group, nub, partition, (\\), intersect)
 
-import Data.Graph.Inductive.Graph (Node)
+import Data.Graph.Inductive hiding ((><)) -- (Node)
 import Data.GraphViz hiding (toNode)
 import Data.GraphViz.Attributes.Complete
 import qualified Data.Text.Lazy as T
@@ -75,3 +75,24 @@ getResourceNodeList state needs =
 partitionResourceNodeList :: [(Term,Int,[Int])] -> ([(Term,Int,[Int])],[(Term,Int,[Int])])
 partitionResourceNodeList l = partition multipleNodes l
     where multipleNodes (_,_,nds) = (length . nub) nds > 1
+
+
+-- find the id of a node from its label
+--findNodeId :: (Eq a) => Gr a b -> a -> Node
+findNodeId g l = 
+    let swap (x,y) = (y,x)
+        lassoc = map swap (labNodes g)
+        maybeId = lookup l lassoc
+    in  fromMaybe (-1) maybeId --fromMaybe -1 $ (lookup l) (map swap (labNodes g))
+
+-- is there a link from x to y
+-- TODO: confirm that there is no point using x of the form _l_STRING
+--linkExists :: Gr String b -> String -> String -> Bool
+linkExists x y g = 
+    let nx = findNodeId g ("_o_"++x)
+        nyl = findNodeId g ("_l_"++y)
+        nyo = findNodeId g ("_o_"++y)
+    in if (nx>(-1)) then
+        let reachable = dfs [nx] g
+        in (nyl `elem` reachable) || (nyo `elem` reachable)
+       else False

@@ -57,6 +57,7 @@ data ProverState = ProverState
       totalReductions :: Int,     -- ^ The field 'totalReductions' is a counter for the total number of reductions performed so far.
       btTraces :: [Trace],
       btStack :: [ProverState],
+      tellAllStories :: Bool,           -- ^ The field 'tellAllStories' defines whether TeLLer backtracks and tells all the possible stories
       debugMode :: Bool           -- ^ The field 'debugMode' defines whether TeLLer runs in debug mode.
     }
 
@@ -69,6 +70,7 @@ initialState = ProverState { env = [],
                              granularity = 2, 
                              focusedReductions = 0, 
                              totalReductions = 0, 
+                             tellAllStories = False,
                              debugMode = False,
                              btStack = [],
                              btTraces = []
@@ -109,6 +111,8 @@ simplifyEnv state = state { env = map simplify (env state) }
 moveUnfocusedToEnv :: ProverState -> ProverState
 moveUnfocusedToEnv state = state { env = (env state) ++ (unfocused state),  unfocused = [] }
 
+changeTellAllStories :: ProverState -> ProverState
+changeTellAllStories state = state {tellAllStories = not (tellAllStories state)} 
 
 changeDebugMode :: ProverState -> ProverState
 changeDebugMode state = state {debugMode = not (debugMode state)} 

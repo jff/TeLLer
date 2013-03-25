@@ -109,9 +109,11 @@ reduceWithStateIO (term@(a :&: b), ts)
        savedState <- get
        let alternative = savedState {env = ([a,b]\\[t])++ts }
        modify (changeEnvTo (t:ts))
-       state <- get
-       lift $ putStrLn $ "STACK: " ++ show (env alternative)
-       put (state {btStack = alternative:(btStack state)})
+       tellAllStories <- gets tellAllStories
+       when tellAllStories $ do
+           state <- get
+--           lift $ putStrLn $ "STACK: " ++ show (env alternative)
+           put (state {btStack = alternative:(btStack state)})
        return $ Just (t:ts) 
  | otherwise = return Nothing
 reduceWithStateIO _ = return Nothing
@@ -129,22 +131,31 @@ reducePlusStateIO (term@(a :+: b), ts)
        let alternative = savedState {env = ([a,b]\\[t])++ts }
        lift $ putStrLn $ "Alt:" ++ show (env alternative)
        modify (changeEnvTo (t:ts))
-       state <- get
-       put (state {btStack = alternative:(btStack state)})
+
+       tellAllStories <- gets tellAllStories
+       when tellAllStories $ do
+           state <- get
+           put (state {btStack = alternative:(btStack state)})
        return $ Just (t:ts) 
  | (isEnabledAction ts a) && (not (isEnabledAction ts b)) = 
     do savedState <- get
        let alternative = savedState {env = (b:ts) }
        modify (changeEnvTo (a:ts))
-       state <- get
-       put (state {btStack = alternative:(btStack state)})
+
+       tellAllStories <- gets tellAllStories
+       when tellAllStories $ do
+           state <- get
+           put (state {btStack = alternative:(btStack state)})
        return $ Just (a:ts) 
  | (not (isEnabledAction ts a)) && (isEnabledAction ts b) = 
     do savedState <- get
        let alternative = savedState {env = (a:ts) }
        modify (changeEnvTo (b:ts))
-       state <- get
-       put (state {btStack = alternative:(btStack state)})
+
+       tellAllStories <- gets tellAllStories
+       when tellAllStories $ do
+           state <- get
+           put (state {btStack = alternative:(btStack state)})
        return $ Just (b:ts) 
  | otherwise = return Nothing
 reducePlusStateIO _ = return Nothing

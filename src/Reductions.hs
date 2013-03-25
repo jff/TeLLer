@@ -31,23 +31,26 @@ startTeLLer = do
     -- We now start the fixpoint calculation
     startFixpointReductions
     -- BT
-    stack <- gets btStack
-    graphs <- gets btTraces
-    if((length stack) > 0) then do
-                                    trace <- gets actionTrace
-                                    let next = head stack
-                                    -- set the state to next, except for the stack
-                                    allTraces <- gets btTraces
-                                    put $ next {btStack = tail stack, btTraces = trace:allTraces}
-                                    startTeLLer
+
+    tellAllStories <- gets tellAllStories
+    when tellAllStories $ do
+        stack <- gets btStack
+        graphs <- gets btTraces
+        if((length stack) > 0) then do
+                                     trace <- gets actionTrace
+                                     let next = head stack
+                                     -- set the state to next, except for the stack
+                                     allTraces <- gets btTraces
+                                     put $ next {btStack = tail stack, btTraces = trace:allTraces}
+                                     startTeLLer
                                         
-                           else do  
-                                    trace <- gets actionTrace
-                                    state <- get
-                                    put $ state {btTraces = trace:(btTraces state)}
-                                    --g <- gets btTraces
-                                    --lift $ putStrLn $ "ALL TRACES: "++ show g
-                                    --lift $ putStrLn $ show g
+                               else do  
+                                     trace <- gets actionTrace
+                                     state <- get
+                                     put $ state {btTraces = trace:(btTraces state)}
+                                     --g <- gets btTraces
+                                     --lift $ putStrLn $ "ALL TRACES: "++ show g
+                                     --lift $ putStrLn $ show g
 
 startFixpointReductions :: ProverStateIO ()
 startFixpointReductions = do
@@ -134,13 +137,15 @@ chooseActionToFocusOn l = do
         let unFocus = (unfocused state) ++ (l \\ [chosenAction])
 
         -- Saved states
-        savedState <- get
-        let alternatives = [ savedState {env = notChosen: (env (savedState)\\l), 
-                                         unfocused = (unfocused savedState) ++ (l\\[notChosen])} 
-                             | notChosen <- l\\[chosenAction]]
---        lift $ putStrLn $ "ALTS " ++ show (map env alternatives)
-        state <- get
-        put (state {btStack = alternatives++(btStack state)})
+        tellAllStories <- gets tellAllStories
+        when tellAllStories $ do
+            savedState <- get
+            let alternatives = [ savedState {env = notChosen: (env (savedState)\\l), 
+                                             unfocused = (unfocused savedState) ++ (l\\[notChosen])} 
+                                 | notChosen <- l\\[chosenAction]]
+    --        lift $ putStrLn $ "ALTS " ++ show (map env alternatives)
+            state <- get
+            put (state {btStack = alternatives++(btStack state)})
         -- End of saved states
 
         state <- get

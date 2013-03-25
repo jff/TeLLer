@@ -5,20 +5,22 @@ import System.Environment (getArgs)
 import System.Directory (doesFileExist)
 import System.Console.Readline (readline, addHistory)
 import Data.Version (showVersion)
+import Data.List (findIndices)
 
 -- Import GraphViz to generate graphs
-import Data.Graph.Inductive (Gr, mkGraph)
+import Data.Graph.Inductive hiding (version)-- (Gr, mkGraph)
 import Data.GraphViz (runGraphviz, graphToDot,GraphvizOutput(..), isGraphvizInstalled)
 
 -- Build imports
 import Paths_teller (version)
 
 -- Local imports
-import Parser (tts')
+import Parser (tts',tt)
 import Reductions (startTeLLer)
 import ProverState
 import UserIO
 import CGraph
+import Printer
 
 
 -- | Main function.
@@ -44,13 +46,16 @@ mainLoop = do
   state <- get
   let inDebugMode = debugMode state
   when inDebugMode $ lift $ printState state 
-  comm <- lift $ readline "Command [cd+-glpsqr?]: "
+  comm <- lift $ readline "Command [acd+-glpsxqr?]: "
   lift $ tellerPrint "\n"
   case comm of
     Nothing -> lift $ tellerPrintLn goodbye_msg >> return state
     Just c  -> 
      do lift $ addHistory c 
         continue <- case c of
+
+            -- Toggle debug mode.
+            ('a':_) -> toggleTellAllStories >> mainLoop
 
             -- Causality graph
             ['c']   -> do lift $ tellerWarning $ "The command c requires one argument.\
@@ -60,6 +65,7 @@ mainLoop = do
 
             -- Toggle debug mode.
             ('d':_) -> toggleDebugMode >> mainLoop
+
 
             -- Insert resources.
             ['+']   -> do lift $ tellerWarning $ "The command + requires one or more arguments.\
@@ -83,6 +89,9 @@ mainLoop = do
             -- Print current state. If inDebugMode, the state is already being printed, so don't do anything.
             ('p':_) -> if inDebugMode then mainLoop 
                                       else lift (printState state) >> mainLoop
+
+            ('x':l) -> checkCounterFactualCausality (words l) >> mainLoop
+
             -- Quit.
             ('q':_) -> lift (tellerPrintLn goodbye_msg) >> return state
 
@@ -102,6 +111,16 @@ mainLoop = do
             _       -> do lift $ tellerPrintLn $ "Command " ++ c ++ " not recognized."
                           mainLoop
         return state
+
+-- | 'toggleTellAllStories' toggles the tell-all-stories mode
+toggleTellAllStories :: ProverStateIO ()
+toggleTellAllStories = do
+    modify changeTellAllStories
+--    inDebugMode <- gets debugMode 
+    tellAllStories <- gets tellAllStories
+    if tellAllStories then lift (tellerDebug "TeLLer will now tell all possible stories.")
+                      else lift (tellerDebug "TeLLer will now tell only one story.")
+
 
 -- | 'toggleDebugMode' switches on or off the debug mode
 toggleDebugMode :: ProverStateIO ()
@@ -170,14 +189,40 @@ printGraph filename = do
         lift $ runGraphviz (graphToDot cGraphParams cgr) Pdf filename
         lift $ runGraphviz (graphToDot cGraphParams cgr) DotOutput (filename++".dot")
 
-        {-- EXPERIMENTAL: generate all graphs --}
-        allTraces <- gets btTraces
-        let allGraphs = map ((uncurry mkGraph) . mkCGraph) allTraces :: [Gr String String]
-        let numbered = zip [0..] allGraphs 
-        let producePDF (n,g) = runGraphviz (graphToDot cGraphParams g) Pdf ('_':(show n)++".pdf")
-        lift $ sequence_ $ map producePDF numbered
+        tellAllStories <- gets tellAllStories
+        when(tellAllStories) $ do
+            {-- EXPERIMENTAL: generate all graphs --}
+            allTraces <- gets btTraces
+            let allGraphs = map ((uncurry mkGraph) . mkCGraph) allTraces :: [Gr String String]
+--            let a = showTerm $ tt "a-@c*b"
+--            let b = showTerm $ tt "b*c-@d"
+    --        lift $ putStrLn $ show $ map ((flip findNodeId) ("_o_"++a)) allGraphs
+--            lift $ putStrLn $ show $ map (linkExists a b) allGraphs
+            let numbered = zip [0..] allGraphs 
+            let producePDF (n,g) = runGraphviz (graphToDot cGraphParams g) Pdf ('_':(show n)++".pdf")
+            lift $ sequence_ $ map producePDF numbered
 
         return ()
+
+checkCounterFactualCausality :: [String] -> ProverStateIO ()
+checkCounterFactualCausality l = do
+    if (length l < 2) then do
+        lift $ tellerWarning "The command 'x' takes two actions as arguments."
+                      else do
+        let string_a1 = l!!0
+        let string_a2 = l!!1
+        -- TODO: in the future, allow more than two actions as arguments, i.e., is a1 -> [a2,a3,a4] ?
+        let a1 = showTerm $ tt string_a1
+        let a2 = showTerm $ tt string_a2
+        allTraces <- gets btTraces
+        let allGraphs = map ((uncurry mkGraph) . mkCGraph) allTraces :: [Gr String String]
+        let allChecks = map (linkExists a1 a2) allGraphs
+        if (and allChecks) then lift $ tellerPrintLn $ "Yes: " ++ a2 ++ " is caused by " ++ a1 ++ " in *all* the possible narratives!"
+                           else do
+                                    let indices = findIndices (==False) allChecks 
+                                    let counterexamples = map ((\s->('_':s)++".pdf ").show) indices
+                                    lift $ tellerPrint $ "No: " ++ a2 ++ " is not caused by " ++ a1 ++ " in the following narratives: "
+                                    lift $ sequence_ $ map tellerPrintLn counterexamples
 
 -- | 'printState' prints the state given as argument. The output is defined by
 --   the function 'showState'.
@@ -198,6 +243,7 @@ printWelcomeMessage = tellerPrintLn $ logo ++ "\nEnter ? for help."
 helpOptions :: String
 helpOptions = 
     "Available commands:\n\
+  \  \ta: tell all the possible stories (and generate all the graphs)\n\
   \  \tc <filename.jpg>: writes the causality graph to filename.jpg\n\
   \  \td: toggles debug mode (on/off)\n\
   \  \t+ <res>: insert res\n\
@@ -206,6 +252,7 @@ helpOptions =
   \  \tl: load file\n\
   \  \tp: print environment\n\
   \  \ts: start reductions\n\
+  \  \tx <a1> <a2>: checks if action <a2> is caused by <a1> in all the generated graphs\n\
   \  \tr: reset to initial state\n\
   \  \tq: quit\n\
   \  \t?: help\n"
