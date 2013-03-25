@@ -222,7 +222,8 @@ checkCounterFactualCausality l = do
                                     let indices = findIndices (==False) allChecks 
                                     let counterexamples = map ((\s->('_':s)++".pdf ").show) indices
                                     lift $ tellerPrint $ "No: " ++ a2 ++ " is not caused by " ++ a1 ++ " in the following narratives: "
-                                    lift $ sequence_ $ map tellerPrintLn counterexamples
+                                    lift $ sequence_ $ map tellerPrint counterexamples
+                                    lift $ tellerPrintLn "" -- add new line
 
 -- | 'printState' prints the state given as argument. The output is defined by
 --   the function 'showState'.
