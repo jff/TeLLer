@@ -6,108 +6,186 @@ module Main where
 import Data.Graph.Inductive (Gr, mkGraph)
 import Data.GraphViz (runGraphviz, graphToDot,GraphvizOutput(..), isGraphvizInstalled)
 
-import System.Console.CmdArgs
+
 import System.IO (hPutStrLn, stderr, stdin, openFile, IOMode(..), hClose, hGetContents)
---import Control.Monad (when)
+import System.Directory (doesFileExist, doesDirectoryExist, createDirectory)
+import System.Console.Readline (readline, addHistory)
+import System.Process (readProcess)
+
 import Control.Monad.State -- (lift, evalStateT, get, gets, put, modify, when)
 import qualified Data.Map as Map -- hiding (null, foldr)
 import Control.Applicative
 import Data.Maybe (fromJust, fromMaybe)
-import Data.List (nub, sort, groupBy, (\\), partition)
+import Data.List (nub, sort, groupBy, (\\), partition, findIndices)
+
+import Text.ParserCombinators.Parsec hiding (State)
 
 -- Local imports
+import CelfToGraphParser
 import Syntax
-import Parser (tts')
+import Parser 
 import Term (detensor)
+import CLI
+import Printer
 
 -- Local imports
 import CGraph
 
-
-data Args = Args {
-      inputFile  :: FilePath,
-      outputFile :: FilePath
-    } deriving (Eq, Show, Typeable, Data)
-
-defaultArgs :: Args
-defaultArgs = Args {
-               outputFile = "celfGraph.png"
-               &= typFile
-               &= groupname "Output file"
-               &= help "File where the graph is saved to"
-
-               ,inputFile = def
-               &= args
-               &= typ "FILE"
-              } &= verbosity
-                &= summary ("CelfToGraph: extraction of causality graphs from Celf traces" )
-
-
-{--
-validateArgs :: Args -> IO ()
-validateArgs Args{..} = do
-  dirExists <- doesDirectoryExist output
-  let p !? what | p         = Just what
-                | otherwise = Nothing
-      infix 1 !?
-      problems = catMaybes [
-        dirExists    !? "The output directory must be a non-existing directory",
-        (null files) !? "At least one data source has to be specified"
-       ]
-  forM_ problems $ hPutStrLn stderr . ("Error: " ++)
-  unless (null problems) $ exitWith (ExitFailure 1)
---}
-
-
+type Trace = [(Int,[Int],String)]
 data CState = State {
     nameBinds         :: Map.Map String (Term,Int), -- the int is the nodeid
     originOfResources :: Map.Map Term [Int],
-    trace :: [(Int, [Int], String)],
-    nodeId :: Int
+    trace :: Trace, -- current trace
+    nodeId :: Int,
+    allTraces :: [Trace]
 } deriving Show
 
 initialState = State {
     nameBinds = Map.empty,
     originOfResources = Map.empty,
     trace = [],
-    nodeId = 0
+    nodeId = 0,
+    allTraces = []
 }
 
 type CStateIO a = StateT CState IO a
 
+parseString :: String -> CelfOutput
+parseString str =
+  case parse celfOutputParser "" str of
+    Left e  -> error $ show e
+    Right r -> r
+
+parseFile :: String -> IO CelfOutput
+parseFile file =
+   do celfout  <- readFile file
+      case parse celfOutputParser "" celfout of
+        Left e  -> print e >> fail "parse error"
+        Right r -> return r
+
+-- | 'loadFileAsk' reads a file name from the user and loads the file,
+--   i.e., it changes the environment to the resources and actions described in the file.
+loadFileAsk :: CStateIO ()
+loadFileAsk = do
+    fileName <- lift $ readFileNameFromUser "Load file: "
+    loadFile fileName
+
+celf_cmd = "/Users/jff/work/phd-repository/code/celf/celf/celf"
+
+-- | 'loadFile' loads the file given as a parameter, i.e.,
+--   it changes the environment to the resources and actions described in the file.
+loadFile :: FilePath -> CStateIO ()
+loadFile fileName = do
+    fileExists <- lift $ doesFileExist fileName
+    if (fileExists) then do fileContents <- lift $ readFile fileName 
+                            out <- lift $ readProcess celf_cmd [fileName] ""
+                            let f = parseString out
+                            modify (processSolutions f)
+                            lift $ tellerPrintLn "Done."
+                    else lift (tellerError $ "ERROR: File '" ++ fileName ++ "' does not exist!") 
+
+-- | 'writeGraphsToDir' writes all graphs to the directory given
+writeGraphsToDir :: FilePath -> CStateIO ()
+writeGraphsToDir dirName = do
+    dirExists <- lift $ doesDirectoryExist dirName
+    if (dirExists) then lift $ tellerPrintLn "Error: directory exists."
+                   else do lift $ createDirectory dirName
+                           ts <- gets allTraces
+                           let gs = map mkCGraph ts -- gs=[(nds,eds)]
+                           let graphs = map (uncurry mkGraph) gs :: [Gr String String]
+                           let createPDF filename g = runGraphviz (graphToDot cGraphParams g) Pdf filename
+                           let ioCommands = zipWith ($) [createPDF (dirName++"/"++((show n)++".pdf")) | n<-[0..]] graphs
+                           lift $ sequence_ ioCommands
+                           lift $ tellerPrintLn $ "Done. Number of graphs generated: " ++ show (length graphs)
+ 
 main :: IO ()
 main = do
-  as@Args{..} <- cmdArgs $ defaultArgs &= program "CelfToGraph"
-  --validateArgs as
-  putStrLn $ "Output: " ++ outputFile
-  --inh <- openHandle inputFile
-  --inpStr <- hGetContents inh
-  --putStrLn inpStr
-  -- hClose inh
-  evalStateT (test y) initialState
-  putStrLn "Goodbye."
+  printWelcomeMessage
+  evalStateT mainLoop initialState
+  return ()
 
-test x = do
---    names <- gets nameBinds
---    lift $ putStrLn $ show names
-    state <- get
-    lift $ putStrLn $ show state
-    modify (addInitialResources x)
-    state <- get
-    lift $ putStrLn $ show state
---    o <- gets originOfResources
- --   lift $ putStrLn $ show o
-    state <- get
-    lift $ putStrLn $ show state
-    modify (processLambda x)
-    state <- get
-    lift $ putStrLn $ show state
-    t <- gets trace
-    let (nds,eds) = mkCGraph t
-    let cgr = mkGraph nds eds :: Gr String String
-    lift $ runGraphviz (graphToDot cGraphParams cgr) Pdf "jff.pdf"
- 
---    modify (f names)
+checkCounterFactualCausality :: [String] -> CStateIO ()
+checkCounterFactualCausality l = do
+    if (length l < 2) then do
+        lift $ tellerWarning "The command 'link' takes two actions as arguments."
+                      else do
+        let string_a1 = l!!0
+        let string_a2 = l!!1
+        -- TODO: in the future, allow more than two actions as arguments, i.e., is a1 -> [a2,a3,a4] ?
+        let a1 = showTerm $ tt string_a1
+        let a2 = showTerm $ tt string_a2
+        allTraces <- gets allTraces
+        let allGraphs = map ((uncurry mkGraph) . mkCGraph) allTraces :: [Gr String String]
+        let allChecks = map (linkExists a1 a2) allGraphs
+        if (and allChecks) then lift $ tellerPrintLn $ "Yes: " ++ a2 ++ " is caused by " ++ a1 ++ " in *all* the possible narratives!"
+                           else do
+                                    let indices = findIndices (==False) allChecks 
+                                    let counterexamples = map ((\s->('_':s)++".pdf ").show) indices
+                                    lift $ tellerPrint $ "No: " ++ a2 ++ " is not caused by " ++ a1 ++ " in the following narratives: "
+                                    lift $ sequence_ $ map tellerPrint counterexamples
+                                    lift $ tellerPrintLn "" -- add new line
+
+
+
+mainLoop :: CStateIO CState
+mainLoop = do
+  state <- get
+  comm <- lift $ readline "Command [w, link, l, q, ?]: "
+  lift $ tellerPrint "\n"
+  case comm of
+    Nothing -> lift $ putStrLn goodbye_msg >> return state
+    Just c  -> 
+     do lift $ addHistory c 
+        continue <- case c of
+
+
+            -- Write to folder
+            ('w':f) -> writeGraphsToDir ((head.words) f)  >> mainLoop
+
+            -- Link from a1 to a2
+            ('l':'i':'n':'k':as) -> checkCounterFactualCausality (words as) >> mainLoop
+
+            -- Load file.
+            ['l']    -> loadFileAsk >> mainLoop
+            ('l':f) -> loadFile ((head.words) f)  >> mainLoop
+
+            -- Quit.
+            ('q':_) -> lift (putStrLn goodbye_msg) >> return state
+
+            -- Help options.
+            ('?':_) -> lift (tellerPrintLn helpOptions) >> mainLoop
+
+            -- All other commands are not recognized.
+            _       -> do lift $ putStrLn $ "Command " ++ c ++ " not recognized."
+                          mainLoop
+        return state
+
+printWelcomeMessage :: IO ()
+printWelcomeMessage = tellerPrintLn $ logo ++ "\nEnter ? for help."
+
+helpOptions :: String
+helpOptions = 
+    "Available commands:\n\
+  \  \tw <foldername>: writes the causality graphs to folder <foldername>\n\
+  \  \tl <filename>: load file <filename>\n\
+  \  \tl: ask for file name and load it\n\
+  \  \tlink <a1> <a2>: checks if action <a2> is caused by <a1> in the generated graphs\n\
+  \  \tq: quit\n\
+  \  \t?: help\n"
+
+logo :: String
+logo = " \
+\ _____     _  __ _______     _____                 _     \n\
+\ / ____|   | |/ _|__   __|   / ____|               | |    \n\
+\| |     ___| | |_   | | ___ | |  __ _ __ __ _ _ __ | |__  \n\
+\| |    / _ \\ |  _|  | |/ _ \\| | |_ | '__/ _` | '_ \\| '_ \\ \n\
+\| |___|  __/ | |    | | (_) | |__| | | | (_| | |_) | | | |\n\
+\ \\_____\\___|_|_|    |_|\\___/ \\_____|_|  \\__,_| .__/|_| |_|\n\
+\                                             | |          \n\
+\                                             |_|  \n"
+
+goodbye_msg :: String
+goodbye_msg = "Goodbye. Thanks for using CelfToGraph."
 
 -- TODO: parameterize the number of nodes
 addInitialResources :: CelfOutput -> CState -> CState
@@ -118,58 +196,17 @@ addInitialResources (Celf init _ _) state =
     state { originOfResources = newMap }
 
 
-f :: Map.Map String Term -> CState -> CState
-f names state = undefined -- state { nameBinds = fromList [("A",] }
+processSolutions :: CelfOutput -> CState -> CState
+processSolutions (Celf init actions []) state = state
+processSolutions o@(Celf init actions (l:ls)) state = 
+    let state' = addInitialResources o state
+        newState = processLambda init actions l state'
+        lastTrace = trace newState
+        previousTraces = allTraces newState
+        updatedState = initialState { allTraces = previousTraces ++ (filter (not . null) [lastTrace]), trace = [], nodeId = 0 }
+    in processSolutions (Celf init actions ls) updatedState
 
-type Var = String
-type RuleName = String
-data CelfOutput = Celf [Term] (Map.Map String Term) Solution deriving (Show)
-data Solution   = Lambda Var [LetBinding] deriving (Show)
-data LetBinding = Let [Var] (Maybe RuleName) [Var] deriving (Show)
-
--- generated manually
-x :: CelfOutput
-x = Celf (tts' "a*b")
-         (Map.fromList [("a1",head $ tts' "a-@b*b"),("a2",head $ tts' "b*b-@c")])
-         (Lambda "X1" [ Let ["X2","X3"] Nothing     ["X1"],
-                        Let ["X4","X5"] (Just "a1") ["X2"],
-                        Let ["X6"]      (Just "a2") ["X5","X3"]
-                      ])
-
-
-y :: CelfOutput
-y =  Celf (tts' "k * l * p")
-          (Map.fromList [("o1", head $ tts' "k-@m"),
-                         ("o2", head $ tts' "l-@m"),
-                         ("a1", head $ tts' "l-@d"),
-                         ("a2", head $ tts' "p-@m*m"),
-                         ("a3", head $ tts' "m*m-@f")
-                        ])
-          (Lambda "X1" [
-                            Let ["X2","X3","X4"] Nothing ["X1"],
-                            Let ["X5","X6"] (Just "a2") ["X4"],
-                            Let ["X7"] (Just "o2") ["X3"],
-                            Let ["X8"] (Just "a3") ["X5","X6"],
-                            Let ["X9"] (Just "o1") ["X2"],
-                           Let ["X10"] (Just "a3") ["X9","X7"]
-                       ])
---o1: k -o {@m}.
---o2: l -o {@m}.
---a1: m -o {@d}.
---a2: p -o {@m * @m}.
---a3: (m * m) -o {@f}.
---init: Type = {k * (l * p)}.
---Solution: \@X1. {
---    let {[X2, [X3, X4]]} = X1 in 
---    let {[@X5, @X6]} = a2 X4 in 
---    let {@X7} = o2 X3 in 
---    let {@X8} = a3 [X5, X6] in 
---    let {@X9} = o1 X2 in 
---    let {@X10} = a3 [X9, X7] in X10}
---
-
-processLambda :: CelfOutput -> CState -> CState
-processLambda (Celf init actions (Lambda _ ls)) state = processLetBindings ls state
+processLambda init actions (Lambda _ ls) state = processLetBindings ls state
     where processLetBindings [] state = state
           processLetBindings ((Let vs Nothing _):xs) state = 
             let rs = zip (concatMap detensor init) (repeat 0)
@@ -206,7 +243,8 @@ processLambda (Celf init actions (Lambda _ ls)) state = processLetBindings ls st
                 -- Before we consume the directLinks, let us keep track of the nodes we need to link from directly
                 lookupInMap = (flip Map.lookup) (originOfResources state)
                 flattenResourcesNeeded = nub (map fst directLinks) -- list of resources that are sources of direct links
-                fromLinks = nub $ concatMap (fromJust . lookupInMap)  flattenResourcesNeeded
+                fromLinks = nub $ concatMap (fromMaybe [-42] . lookupInMap)  flattenResourcesNeeded
+                --fromLinks = nub $ concatMap (fromJust . lookupInMap)  flattenResourcesNeeded
 
                 state' = createAndConsumeORNodes orLinks state
                 -- The trace, originOfResources, and nodeId were now updated with orNodes. We now have
@@ -281,23 +319,5 @@ openHandle inp = do
     if (null inp) then return stdin
                   else do inh <- openFile inp ReadMode
                           return inh
-
--- | 'printGraph' creates a JPEG image of the causality graph and saves it to the file name given
---   as argument.
---printGraph :: FilePath -> ProverStateIO ()
-{--
-printGraph filename = do
-    ginstalled <- isGraphvizInstalled
-    when (not ginstalled) $ do
-        hPutStrLn stderr "Graphviz is not installed. Please install it and try again."
-    when (ginstalled) $ do
-        trace <- gets actionTrace
-        let (nds,eds) = mkCGraph trace
-        let cgr = mkGraph nds eds :: Gr String String
-        runGraphviz (graphToDot cGraphParams cgr) Pdf filename
-        runGraphviz (graphToDot cGraphParams cgr) DotOutput (filename++".dot")
---}
-
-
 
 
