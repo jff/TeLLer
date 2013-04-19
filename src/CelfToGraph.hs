@@ -9,7 +9,8 @@ import Data.GraphViz (runGraphviz, graphToDot,GraphvizOutput(..), isGraphvizInst
 import System.IO (hPutStrLn, stderr, stdin, openFile, IOMode(..), hClose, hGetContents)
 import System.Directory (doesFileExist, doesDirectoryExist, createDirectory)
 import System.Console.Readline (readline, addHistory)
-import System.Process (readProcess)
+import System.Process (readProcessWithExitCode)
+import System.Exit
 
 import Control.Monad.State -- (lift, evalStateT, get, gets, put, modify, when)
 import qualified Data.Map as Map -- hiding (null, foldr)
@@ -124,12 +125,18 @@ loadFile :: FilePath -> CStateIO ()
 loadFile fileName = do
     fileExists <- lift $ doesFileExist fileName
     if (fileExists) then do fileContents <- lift $ readFile fileName 
-                            out <- lift $ readProcess celf_cmd [fileName] ""
-                            let celfOut = parseString out
-                            let newTraces = celfoutToTraces celfOut
-                            let newGraphs = graphsFromTraces newTraces
-                            modify (\state -> state {traces = newTraces, graphs = newGraphs})
-                            lift $ tellerPrintLn $ "Done. " ++ show (length newGraphs) ++ " graphs generated."
+--                            out <- lift $ readProcess celf_cmd [fileName] ""
+                            (exitcode, out, err) <- lift $ readProcessWithExitCode celf_cmd [fileName] ""
+                            case exitcode of
+                                ExitSuccess -> do
+                                                let celfOut = parseString out
+                                                let newTraces = celfoutToTraces celfOut
+                                                let newGraphs = graphsFromTraces newTraces
+                                                modify (\state -> state {traces = newTraces, graphs = newGraphs})
+                                                lift $ tellerPrintLn $ "Done. " ++ show (length newGraphs) ++ " graphs generated."
+                                (ExitFailure e) -> do
+                                                    lift $ tellerPrintLn $ "An error occurred when running celf on the file provided. \
+                                                                          \ Error code: "++show e++".\n" ++ err
                     else lift (tellerError $ "ERROR: File '" ++ fileName ++ "' does not exist!") 
 
 
