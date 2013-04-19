@@ -140,9 +140,14 @@ writeGraphsToDir dirName = do
     dirExists <- lift $ doesDirectoryExist dirName
     if (dirExists) then lift $ tellerPrintLn "Error: directory exists."
                    else do lift $ createDirectory dirName
+                           -- Write graphs
                            graphs <- gets graphs
                            let createPDF filename g = runGraphviz (graphToDot cGraphParams g) Pdf filename
                            let ioCommands = zipWith ($) [createPDF (dirName++"/"++((show n)++".pdf")) | n<-[0..]] graphs
+                           lift $ sequence_ ioCommands
+                           -- Write traces
+                           traces <- gets traces
+                           let ioCommands = zipWith ($) [writeFile (dirName++"/"++((show n)++".trace")) | n<-[0..]] (showActionTraces traces)
                            lift $ sequence_ ioCommands
                            lift $ tellerPrintLn $ "Done. " ++ show (length graphs) ++ " graphs written to directory " ++ dirName ++ "."
  

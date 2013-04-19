@@ -166,6 +166,14 @@ linkExists x y g =
 ------------------------------------------------------------------
 
 ----------------------------------
+-- Functions on traces
+----------------------------------
+
+showActionTraces :: Traces -> [String]
+showActionTraces (Trace _ at) = map (seqActions . map getActionName) at
+    where seqActions = foldr1  (\a b -> (a++";"++b))
+
+----------------------------------
 -- Functions on graphs
 ----------------------------------
 
