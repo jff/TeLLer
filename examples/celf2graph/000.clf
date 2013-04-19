@@ -1,0 +1,22 @@
+%% Encoding of the Madame Bovary story.
+
+% All atoms in the story
+a : type.
+b : type.
+c : type.
+d : type.
+e : type.
+
+a1 : type = b -o {@a * @d}.
+a2 : type = d -o {@c}.
+a3 : type = a * c -o {@e}.
+
+init : type =
+ { !a * @b 
+        * @a1
+        * @a2
+        * @a3
+}.
+
+#query * * * 1 (init -o {e}).
+
