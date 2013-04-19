@@ -1,5 +1,6 @@
 --
 -- A parser for Celf queries output. Possibly, the worst parser ever written...
+-- If Jeremy Clarkson knew anything about parsers, he would classify this one as the worst parser...      i-n   t-h-e   w-o-r-l-d!
 --
 module CelfToGraphParser where
 
@@ -23,7 +24,7 @@ data LetBinding = Let [Var] (Maybe RuleName) [Var] deriving (Show)
 -- generated manually
 x :: CelfOutput
 x = Celf (tts' "a*b")
-         (Map.fromList [("a1",head $ tts' "a-@b*b"),("a2",head $ tts' "b*b-@c")])
+         (Map.fromList [("a1",head $ tts' "a-@b*b \"a1\""),("a2",head $ tts' "b*b-@c \"a2\"")])
          [(Lambda "X1" [ Let ["X2","X3"] Nothing     ["X1"],
                         Let ["X4","X5"] (Just "a1") ["X2"],
                         Let ["X6"]      (Just "a2") ["X5","X3"]
@@ -32,11 +33,11 @@ x = Celf (tts' "a*b")
 
 y :: CelfOutput
 y =  Celf (tts' "k * l * p")
-          (Map.fromList [("o1", head $ tts' "k-@m"),
-                         ("o2", head $ tts' "l-@m"),
-                         ("a1", head $ tts' "l-@d"),
-                         ("a2", head $ tts' "p-@m*m"),
-                         ("a3", head $ tts' "m*m-@f")
+          (Map.fromList [("o1", head $ tts' "k-@m \"o1\""),
+                         ("o2", head $ tts' "l-@m \"o2\""),
+                         ("a1", head $ tts' "l-@d \"a1\""),
+                         ("a2", head $ tts' "p-@m*m \"a2\""),
+                         ("a3", head $ tts' "m*m-@f \"a3\"")
                         ])
           [(Lambda "X1" [
                             Let ["X2","X3","X4"] Nothing ["X1"],
@@ -52,8 +53,8 @@ languageDef =
   emptyDef { Token.commentStart    = "/*"
            , Token.commentEnd      = "*/"
            , Token.commentLine     = "//"
-           , Token.identStart      = letter
-           , Token.identLetter     = alphaNum <|> char '_'
+           , Token.identStart      = letter <|> char '!'
+           , Token.identLetter     = alphaNum <|> char '_' 
            , Token.reservedNames   = [ "Solution:"
                                      , "let"
                                      , "in"
@@ -104,18 +105,20 @@ parseType = do
 
 parseAction :: Parser (String,Term)
 parseAction = do
+    notFollowedBy (string "init: Type =")
     name <- identifier
-    string ": "
+    string ": Type = "
     -- I only want to parse actions, so the lollipop has to be present
     term1 <- manyTill anyChar (try (string "-o "))
     term2 <- manyTill anyChar (try (string "."))
-    return (name, head $ tts' (celf2teller (term1++"-o "++term2)))
+    return (name, head $ tts' (celf2teller (term1++"-o "++term2++" \""++name++"\"")))
 
 celf2teller :: String -> String
 celf2teller s = 
     if (take 7 s == "Type = ") then strip (drop 7 s)-- init
                                else (convertLolli . strip) s
-    where strip = filter (not . \x -> x `elem` ['{','}','@','!'])
+    --where strip = filter (not . \x -> x `elem` ['{','}','@','!'])
+    where strip = filter (not . \x -> x `elem` ['{','}','@'])
           convertLolli (x:y:xs) | (x=='-') && (y=='o') = '-':'@':convertLolli xs
                                 | otherwise = x:convertLolli (y:xs)
           convertLolli (x:xs) = x:convertLolli xs
@@ -177,19 +180,33 @@ p1 = do
     return (Nothing, lvright)
 
 p2 = do
-    ruleName <- identifier
+--    ruleName <- identifier
+    ruleName <- hashNumberRule
     whiteSpace
     lvright <- parsePossiblyNestedLists
     whiteSpace
     manyTill anyChar (try (string "in" >> whiteSpace >> identifier >> lookAhead (symbol "}")) <|> try (string "in ") )
     return (Just ruleName, lvright)
 
+-- X11 #N -> "#N_X11"
+hashNumberRule = try ruleWithHash <|> try identifier
+ruleWithHash = do
+    v <- identifier
+    whiteSpace
+    symbol "#"
+    i <- integer
+    whiteSpace
+    return $ ('#':show i)++"_"++v
+ 
+
 parsePossiblyNestedLists :: Parser [Var]
 parsePossiblyNestedLists = do
-    s <- try p3 <|> try ((symbol "@" <|> symbol "!") >> identifier) <|> try identifier  <|> try (string "1")
+    --s <- try p3 <|> try ((symbol "@" <|> symbol "!") >> identifier) <|> try identifier  <|> try (string "1")
+    s <- try p3 <|> try (symbol "@" >> identifier) <|> try identifier  <|> try (string "1")
     return $ wordsWhen (==',') $ strip $ removeBrackets s
 
-    where strip = filter (not . (\c -> c `elem` ['@',' ', '!']))
+    --where strip = filter (not . (\c -> c `elem` ['@',' ', '!']))
+    where strip = filter (not . (\c -> c `elem` ['@',' ']))
 
 p3 = do
     symbol "["
@@ -197,10 +214,11 @@ p3 = do
     symbol "]"
     return $ drop 1 $ concatMap (',':) l
 
-cell = try p3 <|> (try ((symbol "@" <|> symbol "!") >> identifier)) <|> try hashNumber
+--cell = try p3 <|> (try ((symbol "@" <|> symbol "!") >> identifier)) <|> try hashNumber
+cell = try p3 <|> (try (symbol "@" >> identifier)) <|> try hashNumber
 hashNumber = do
     v <- identifier
-    optional (symbol "#" >> integer)
+    optional (whiteSpace >> symbol "#" >> integer >> whiteSpace)
     return $ v
     
 -- Auxiliary methods

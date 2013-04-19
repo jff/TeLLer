@@ -6,7 +6,6 @@ module Main where
 import Data.Graph.Inductive (Gr, mkGraph)
 import Data.GraphViz (runGraphviz, graphToDot,GraphvizOutput(..), isGraphvizInstalled)
 
-
 import System.IO (hPutStrLn, stderr, stdin, openFile, IOMode(..), hClose, hGetContents)
 import System.Directory (doesFileExist, doesDirectoryExist, createDirectory)
 import System.Console.Readline (readline, addHistory)
@@ -24,45 +23,93 @@ import Text.ParserCombinators.Parsec hiding (State)
 import CelfToGraphParser
 import Syntax
 import Parser 
-import Term (detensor)
+import Term (detensor, deWith)
 import CLI
 import Printer
+import CausalityGraph hiding (getActionName)
 
--- Local imports
-import CGraph
 
-type Trace = [(Int,[Int],String)]
+------------------------------------------------------------------
+-- Data structures
+------------------------------------------------------------------
+
 data CState = State {
-    nameBinds         :: Map.Map String (Term,Int), -- the int is the nodeid
-    originOfResources :: Map.Map Term [Int],
-    trace :: Trace, -- current trace
-    nodeId :: Int,
-    allTraces :: [Trace]
+    traces :: Traces,
+    graphs :: [Gr String String]
 } deriving Show
 
 initialState = State {
-    nameBinds = Map.empty,
-    originOfResources = Map.empty,
-    trace = [],
-    nodeId = 0,
-    allTraces = []
+    traces = Trace [] [],
+    graphs = []
 }
 
 type CStateIO a = StateT CState IO a
 
+------------------------------------------------------------------
+-- Code that converts CelfOutput to Traces
+------------------------------------------------------------------
+
+celfoutToTraces :: CelfOutput -> Traces
+celfoutToTraces (Celf init actions solutions) = Trace init $ filter (\l -> length l > 0)$ map (getTrace init actions) solutions
+
+getTrace :: [Term] -> Map.Map String Term -> Solution -> ActionTrace
+getTrace init actions (Lambda _ ls) = concatMap (getAction actions nameBindings) ls
+    where nameBindings = createNameBindings ls Map.empty
+          createNameBindings [] currentBindings = currentBindings
+          createNameBindings ((Let vs Nothing _):xs) currentBindings = 
+            let rs = concatMap detensor init
+                newBindings = Map.fromList $ zip vs rs
+            in createNameBindings xs (currentBindings `Map.union` newBindings)
+          createNameBindings ((Let vs (Just a) rs):xs) currentBindings = 
+            let actionName = getActionName a actions currentBindings
+                newResources = detensor $ getLeftLolli $ fromMaybe (Atom ("ERROR: action " ++ actionName)) $ Map.lookup actionName actions
+                newBindings = Map.fromList $ zip vs newResources 
+            in createNameBindings xs (currentBindings `Map.union` newBindings)
+
+getAction :: Map.Map String Term -> Map.Map String Term -> LetBinding -> [Term]
+getAction actions currentBindings (Let _ Nothing _) = []
+getAction actions currentBindings (Let _ (Just name) _) = 
+    let actionName = getActionName name actions currentBindings --[fromMaybe (Atom "ERROR") (Map.lookup name actions)]
+    in [fromMaybe (Atom ("*ERROR: " ++ actionName)) (Map.lookup actionName actions)]
+
+getActionNameFromBindings a currentBinds =
+    let ruleNameGarbage = show $ fromMaybe (Atom ("ERROR: action" ++ a)) (Map.lookup a currentBinds)
+        removeAtomAndQuotes = filter (not . (\c -> c `elem` ['\\','"'])) . (drop 6) 
+        ruleName = removeAtomAndQuotes ruleNameGarbage
+    in ruleName
+
+getActionNameFromProjection a  currentBinds =
+    -- The action name is of the form #N_Var; we need to get the term associated with Var, and extract the name of the Nth projection,
+    let (projection, var) = (\(x,y) -> (read $ drop 1 x :: Int, drop 1 y)) . span (/='_') $  a
+        allRuleNameGarbage = fromMaybe (Atom ("ERROR: action" ++ a)) (Map.lookup var currentBinds)
+        -- Atom "a" :&: Atom "b" :&: etc...
+        allChoices = deWith allRuleNameGarbage -- transforms argument into list
+        removeAtomAndQuotes = filter (not . (\c -> c `elem` ['\\','"'])) . (drop 6) 
+        ruleName = removeAtomAndQuotes (show (allChoices!!(projection-1)))
+    in ruleName
+
+
+getActionName a actions currentBinds =
+    if Map.member a actions 
+    then a 
+    else if (head a == '#') -- it's a projection... 
+         then getActionNameFromProjection a currentBinds
+         else getActionNameFromBindings a currentBinds
+
+-- End of code that converts CelfOutput to Traces
+
+------------------------------------------------------------------
+--  Functions that parse the output of Celf
+------------------------------------------------------------------
 parseString :: String -> CelfOutput
 parseString str =
   case parse celfOutputParser "" str of
     Left e  -> error $ show e
     Right r -> r
 
-parseFile :: String -> IO CelfOutput
-parseFile file =
-   do celfout  <- readFile file
-      case parse celfOutputParser "" celfout of
-        Left e  -> print e >> fail "parse error"
-        Right r -> return r
-
+------------------------------------------------------------------
+--  Functions that interact with the user and change the state
+------------------------------------------------------------------
 -- | 'loadFileAsk' reads a file name from the user and loads the file,
 --   i.e., it changes the environment to the resources and actions described in the file.
 loadFileAsk :: CStateIO ()
@@ -79,10 +126,14 @@ loadFile fileName = do
     fileExists <- lift $ doesFileExist fileName
     if (fileExists) then do fileContents <- lift $ readFile fileName 
                             out <- lift $ readProcess celf_cmd [fileName] ""
-                            let f = parseString out
-                            modify (processSolutions f)
-                            lift $ tellerPrintLn "Done."
+                            let celfOut = parseString out
+                            let newTraces = celfoutToTraces celfOut
+                            let newGraphs = graphsFromTraces newTraces
+                            modify (\state -> state {traces = newTraces, graphs = newGraphs})
+                            lift $ tellerPrintLn $ "Done. " ++ show (length newGraphs) ++ " graphs generated."
                     else lift (tellerError $ "ERROR: File '" ++ fileName ++ "' does not exist!") 
+
+
 
 -- | 'writeGraphsToDir' writes all graphs to the directory given
 writeGraphsToDir :: FilePath -> CStateIO ()
@@ -90,20 +141,12 @@ writeGraphsToDir dirName = do
     dirExists <- lift $ doesDirectoryExist dirName
     if (dirExists) then lift $ tellerPrintLn "Error: directory exists."
                    else do lift $ createDirectory dirName
-                           ts <- gets allTraces
-                           let gs = map mkCGraph ts -- gs=[(nds,eds)]
-                           let graphs = map (uncurry mkGraph) gs :: [Gr String String]
+                           graphs <- gets graphs
                            let createPDF filename g = runGraphviz (graphToDot cGraphParams g) Pdf filename
                            let ioCommands = zipWith ($) [createPDF (dirName++"/"++((show n)++".pdf")) | n<-[0..]] graphs
                            lift $ sequence_ ioCommands
-                           lift $ tellerPrintLn $ "Done. Number of graphs generated: " ++ show (length graphs)
+                           lift $ tellerPrintLn $ "Done. " ++ show (length graphs) ++ " graphs written to directory " ++ dirName ++ "."
  
-main :: IO ()
-main = do
-  printWelcomeMessage
-  evalStateT mainLoop initialState
-  return ()
-
 checkCounterFactualCausality :: [String] -> CStateIO ()
 checkCounterFactualCausality l = do
     if (length l < 2) then do
@@ -114,18 +157,23 @@ checkCounterFactualCausality l = do
         -- TODO: in the future, allow more than two actions as arguments, i.e., is a1 -> [a2,a3,a4] ?
         let a1 = showTerm $ tt string_a1
         let a2 = showTerm $ tt string_a2
-        allTraces <- gets allTraces
-        let allGraphs = map ((uncurry mkGraph) . mkCGraph) allTraces :: [Gr String String]
-        let allChecks = map (linkExists a1 a2) allGraphs
-        if (and allChecks) then lift $ tellerPrintLn $ "Yes: " ++ a2 ++ " is caused by " ++ a1 ++ " in *all* the possible narratives!"
-                           else do
-                                    let indices = findIndices (==False) allChecks 
-                                    let counterexamples = map ((\s->('_':s)++".pdf ").show) indices
-                                    lift $ tellerPrint $ "No: " ++ a2 ++ " is not caused by " ++ a1 ++ " in the following narratives: "
-                                    lift $ sequence_ $ map tellerPrint counterexamples
-                                    lift $ tellerPrintLn "" -- add new line
+        allGraphs <- gets graphs
+        if (null allGraphs) then lift $ tellerPrintLn $ "You need to load a file before querying the graphs."
+                            else do
+            let allChecks = map (linkExists a1 a2) allGraphs
+            if (and allChecks) then lift $ tellerPrintLn $ "Yes: " ++ a2 ++ " is caused by " ++ a1 ++ " in all the generated narratives!"
+                               else do
+                                let indices = findIndices (==False) allChecks 
+                                let counterexamples = map ((\s->('_':s)++".pdf ").show) indices
+                                lift $ tellerPrint $ "No: " ++ a2 ++ " is not caused by " ++ a1 ++ " in the following narratives: "
+                                lift $ sequence_ $ map tellerPrint counterexamples
+                                lift $ tellerPrintLn "" -- add new line
 
-
+main :: IO ()
+main = do
+  printWelcomeMessage
+  evalStateT mainLoop initialState
+  return ()
 
 mainLoop :: CStateIO CState
 mainLoop = do
@@ -186,138 +234,3 @@ logo = " \
 
 goodbye_msg :: String
 goodbye_msg = "Goodbye. Thanks for using CelfToGraph."
-
--- TODO: parameterize the number of nodes
-addInitialResources :: CelfOutput -> CState -> CState
-addInitialResources (Celf init _ _) state = 
-    let rs = concatMap detensor init
-        newMap = foldr (\k -> Map.insertWith (++) k [0]) (originOfResources state) rs
-    in
-    state { originOfResources = newMap }
-
-
-processSolutions :: CelfOutput -> CState -> CState
-processSolutions (Celf init actions []) state = state
-processSolutions o@(Celf init actions (l:ls)) state = 
-    let state' = addInitialResources o state
-        newState = processLambda init actions l state'
-        lastTrace = trace newState
-        previousTraces = allTraces newState
-        updatedState = initialState { allTraces = previousTraces ++ (filter (not . null) [lastTrace]), trace = [], nodeId = 0 }
-    in processSolutions (Celf init actions ls) updatedState
-
-processLambda init actions (Lambda _ ls) state = processLetBindings ls state
-    where processLetBindings [] state = state
-          processLetBindings ((Let vs Nothing _):xs) state = 
-            let rs = zip (concatMap detensor init) (repeat 0)
-                bs = Map.fromList $ zip vs rs
-                oldBinds = nameBinds state
-                oldTrace = trace state
-                currentNode = nodeId state
-            in processLetBindings xs $ state { nameBinds = oldBinds `Map.union` bs,
-                                               trace = oldTrace ++ [(currentNode,[],"init")],
-                                               nodeId = currentNode + 1
-                                             }
-          processLetBindings ((Let vs (Just a) rs):xs) state = -- consume rs, produce vs
-            let currentBinds = nameBinds state -- [X2,X3,..]
-                currentResources = originOfResources state
-                currentInitialNode = nodeId state
-
-                --resourcesNeeded = map fromJust $ (map Map.lookup rs) <*> [currentBinds] -- returns a list of pairs (r,n); r is taken from node n
-                resourcesNeeded = map (fromMaybe (Atom "X",0)) $ (map Map.lookup rs) <*> [currentBinds] -- returns a list of pairs (r,n); r is taken from node n
-
-                aggRes = map (\(x,y) -> (head x, y)) $ map unzip $ groupBy (\a b -> fst a == fst b) . sort $ resourcesNeeded
---                flattenResourcesNeeded = nub (map fst resourcesNeeded) -- list of resources needed (w/out repetitions)
---                aggRes = zip flattenResourcesNeeded $ map (fromJust . (flip Map.lookup) currentResources) flattenResourcesNeeded
-                -- we now have resources aggregated: e.g. [(a,[0]), (b, [0,1])]
-                
-                -- IMPORTANT: because we are dealing with Celf outputs, *we know* that the resources ARE available.
-                -- Hence, we do not need to compute where they can come from. We can just change the originOfResources
-                -- and determine if we create an OR node.
-                --fromASingleNode (t,nodes) = null $ (fromJust (Map.lookup t currentResources)) \\ nodes
---                fromASingleNode (t,nodes) = null $ (fromMaybe [] (Map.lookup t currentResources)) \\ nodes
-                fromASingleNode (t,nodes) = length((fromMaybe [] (Map.lookup t currentResources))) <= length((nodes))
-        
-                (directLinks,orLinks) = partition fromASingleNode aggRes
-
-                -- Before we consume the directLinks, let us keep track of the nodes we need to link from directly
-                lookupInMap = (flip Map.lookup) (originOfResources state)
-                flattenResourcesNeeded = nub (map fst directLinks) -- list of resources that are sources of direct links
-                fromLinks = nub $ concatMap (fromMaybe [-42] . lookupInMap)  flattenResourcesNeeded
-                --fromLinks = nub $ concatMap (fromJust . lookupInMap)  flattenResourcesNeeded
-
-                state' = createAndConsumeORNodes orLinks state
-                -- The trace, originOfResources, and nodeId were now updated with orNodes. We now have
-                -- to create the direct links
-
-                newState = consumeDirectLinks directLinks state'
-                currentNode = nodeId newState
-                currentTrace = trace newState
-
---                fromLinks = nub $ concatMap snd directLinks
---                flattenResourcesNeeded = nub (map fst resourcesNeeded) -- list of resources needed (w/out repetitions)
-                orNodesId = [currentInitialNode..(currentNode-1)] -- if there were no OR nodes added, this list is empty
-                newNode = (currentNode, fromLinks++orNodesId, a)
-
-                -- Produce resources
-                newResources = detensor $ getLeft $ fromMaybe (Atom "Z")  $ Map.lookup a actions
-                newMap = foldr (\k -> Map.insertWith (++) k [currentNode]) (originOfResources newState) newResources
-                newBinds = map (\(var,atom) -> (var,(atom,currentNode)) ) $ zip vs newResources -- (VAR, ATOM)
-
-
-            in processLetBindings xs $  newState { originOfResources = newMap,
-                                                trace = newNode:currentTrace,
-                                                nodeId = currentNode + 1,
-                                                nameBinds = currentBinds `Map.union` (Map.fromList newBinds)
-                                              }
-
-getLeft ((:-@:) t1 t2 _) = t2
-getLeft _ = error "The program should never enter this state! Actions must be lollipops."
-
-
-consumeDirectLinks [] state = state
-consumeDirectLinks (o:os) state =
-    let currentResources = originOfResources state
-        term = fst o
-        --resourceAvailableFrom = fromJust $ Map.lookup term currentResources
-        -- causes problem
-        resourceAvailableFrom = fromMaybe [] $ Map.lookup term currentResources
-
-        consumeList = snd o
-        -- the resource should now be available from the or node
-        newOriginOfResources = Map.insert term (resourceAvailableFrom\\consumeList) currentResources
-        
-        newState = state { --nodeId = currentNode + 1,
-                           --trace = orNode:currentTrace,
-                           originOfResources = newOriginOfResources
-                         }
-    in consumeDirectLinks os newState
-
-
-
-createAndConsumeORNodes [] state = state
-createAndConsumeORNodes (o:os) state =
-    let currentNode = nodeId state
-        currentResources = originOfResources state
-        currentTrace = trace state
-        term = fst o
-        resourceAvailableFrom = fromJust $ Map.lookup term currentResources
-        orNode = (currentNode, nub resourceAvailableFrom , "OR")
-
-        -- the resource should now be available from the or node
-        numAvailable = length resourceAvailableFrom
-        numConsumed = length (snd o)
-        newOriginOfResources = Map.insert term (replicate (numAvailable-numConsumed) currentNode) currentResources
-        
-        newState = state { nodeId = currentNode + 1,
-                           trace = orNode:currentTrace,
-                           originOfResources = newOriginOfResources
-                         }
-    in createAndConsumeORNodes os newState
-
-openHandle inp = do
-    if (null inp) then return stdin
-                  else do inh <- openFile inp ReadMode
-                          return inh
-
-

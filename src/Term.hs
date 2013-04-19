@@ -20,6 +20,9 @@ isAtomicResource a = isAtom a || isPersistentAtom a
 detensor (a :*: b) = concat [detensor a, detensor b]
 detensor x = [x]
 
+deWith (a :&: b) = concat [deWith a, deWith b]
+deWith x = [x]
+
 listEnabledActions :: [Term] -> [Term]
 --listEnabledActions env = filter (isEnabledAction (concatMap detensor env)) env
 listEnabledActions env = listEnabledActionsBy env env
