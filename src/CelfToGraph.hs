@@ -21,6 +21,7 @@ import Text.ParserCombinators.Parsec hiding (State)
 
 -- Local imports
 import CelfToGraphParser
+import CelfToGraphConf
 import Syntax
 import Parser 
 import Term (detensor, deWith)
@@ -116,8 +117,6 @@ loadFileAsk :: CStateIO ()
 loadFileAsk = do
     fileName <- lift $ readFileNameFromUser "Load file: "
     loadFile fileName
-
-celf_cmd = "/Users/jff/work/phd-repository/code/celf/celf/celf"
 
 -- | 'loadFile' loads the file given as a parameter, i.e.,
 --   it changes the environment to the resources and actions described in the file.
