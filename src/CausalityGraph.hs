@@ -236,19 +236,52 @@ split f g a = (f a, g a)
 
 ------------------------------------------------------------------
 -- Some corner cases useful for testing. 
--- TODO: Move this somewhere else.
+-- TODO: Move this somewhere else and use Quickcheck.
 ------------------------------------------------------------------
-ex0 :: Traces
+data MyTest = Test { input  :: Traces,
+                     output :: [GraphList],
+                     description :: String }
+
+emptyTrace0 = Trace [] []
+emptyTrace1 = Trace (tts' "Irrelevant Environment") []
+emptyGraph = []
+t0 = Test emptyTrace0 emptyGraph "Empty trace returns empty graph (0)"
+t1 = Test emptyTrace1 emptyGraph "Empty trace returns empty graph (1)"
+
 ex0 = Trace (tts' "Z B")
             [tts' "Z-@!A B-@A A-@B A-@C"]
+cg0 = [[(6,[5],"A  -@  C"),(5,[3,1],"OR"),(4,[3],"A  -@  B"),(3,[2,1],"OR"),(2,[0],"B  -@  A"),(1,[0],"Z  -@  !A"),(0,[],"init")]]
+t2 = Test ex0 cg0 "Persistent resources (0)"
 
-ex1 :: Traces
 ex1 = Trace (tts' "!A B")
             [tts' "B-@A A-@B A-@C"]
+cg1 = [[(5,[4],"A  -@  C"),(4,[2,0],"OR"),(3,[2],"A  -@  B"),(2,[1,0],"OR"),(1,[0],"B  -@  A"),(0,[],"init")]]
+t3 = Test ex1 cg1 "Persistent resources (1)"
 
-ex2 :: Traces
 ex2 = Trace (tts' "A C")
             [tts' "A-@B*B C-@B B*B*B-@D"]
+cg2 = [[(3,[2,1],"B*B*B  -@  D"),(2,[0],"C  -@  B"),(1,[0],"A  -@  B*B"),(0,[],"init")]]
+t4 = Test ex2 cg2 "OR node should not be created (0)"
+
+ex3 = Trace (tts' "Z") [tts' "Z-@A A-@A*B A-@C"]
+cg3 = [[(3,[1],"A  -@  C"),(2,[1],"A  -@  A*B"),(1,[0],"Z  -@  A"),(0,[],"init")]]
+t5 = Test ex3 cg3 "Resources are conserved (0)"
+
+ex4 = Trace (tts' "Z") [tts' "Z-@A A-@A*A*B A-@C"]
+cg4 = [[(4,[3],"A  -@  C"),(3,[2,1],"OR"),(2,[1],"A  -@  A*A*B"),(1,[0],"Z  -@  A"),(0,[],"init")]]
+t6 = Test ex4 cg4 "Resources are conserved (1)"
+
+tests = [
+              t0
+            , t1 
+            , t2 
+            , t3
+            , t4
+            , t5
+            , t6
+        ]
+
+
 
 -- | `writeToDir t d` writes to directory d the graphs generated from t
 writeToDir ts dirName = do
@@ -257,6 +290,15 @@ writeToDir ts dirName = do
     let ioCommands = zipWith ($) [createPDF (dirName++"/"++((show n)++".pdf")) | n<-[0..]] graphs
     sequence_ ioCommands
     putStrLn $ "Done. Number of graphs generated: " ++ show (length graphs)
+
+-----------------------------
+-- Basic automated testing
+-----------------------------
+
+test = testAll tests 0
+    where testAll [] n = "[OK] All tests passed (" ++ show n ++ " tests in total)."
+          testAll (t:ts) n | createGraphsLists (input t) == (output t) = testAll ts (n+1)
+                           | otherwise                                 = "[ERROR] Test failed: " ++ description t
 
 ------------------------------------------------------------------
 -- End of testing functions.
