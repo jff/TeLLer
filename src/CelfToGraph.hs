@@ -75,9 +75,11 @@ getAction actions currentBindings (Let _ (Just name) _) =
     in [fromMaybe (Atom ("*ERROR: " ++ actionName)) (Map.lookup actionName actions)]
 
 getActionNameFromBindings a currentBinds =
-    let ruleNameGarbage = show $ fromMaybe (Atom ("ERROR: action" ++ a)) (Map.lookup a currentBinds)
-        removeAtomAndQuotes = filter (not . (\c -> c `elem` ['\\','"'])) . (drop 6) 
-        ruleName = removeAtomAndQuotes ruleNameGarbage
+    let ruleNameGarbage = show $ fromMaybe (Atom ("ERROR: action" ++ a)) ((Map.lookup a currentBinds) `mplus` (Map.lookup ('!':a) currentBinds))
+        stripActionName a | ((take 8 a) == "OfCourse") = removeAtomAndQuotes (drop 9 a)
+                          | otherwise                  = removeAtomAndQuotes a
+        removeAtomAndQuotes = filter (not . (\c -> c `elem` ['\\','"', ')', '('])) . (drop 6) 
+        ruleName = stripActionName ruleNameGarbage
     in ruleName
 
 getActionNameFromProjection a  currentBinds =

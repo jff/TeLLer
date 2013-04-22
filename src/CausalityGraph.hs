@@ -198,14 +198,14 @@ toLEdge (r,l,a) = [(from,r,"") | from <- l]
 ----------------------------------
 
 getLeftLolli ((:-@:) t1 t2 _) = t1
-getLeftLolli _ = error $ "In the traces given, one of the actions is not a lollipop! Please fix that and try again."
+getLeftLolli t = error $ "[getLeftLolli] In the traces given, one of the actions is not a lollipop! Please fix that and try again." 
 
 getRightLolli ((:-@:) t1 t2 _) = t2
-getRightLolli _ = error $ "In the traces given, one of the actions is not a lollipop! Please fix that and try again."
+getRightLolli _ = error $ "[getRightLolli] In the traces given, one of the actions is not a lollipop! Please fix that and try again."
 
 getActionName (a@((:-@:) t1 t2 Nothing)) = showTerm a
 getActionName ((:-@:) t1 t2 (Just s)) = s
-getActionName _ = error $ "In the traces given, one of the actions is not a lollipop! Please fix that and try again."
+getActionName _ = error $ "[getActioName] In the traces given, one of the actions is not a lollipop! Please fix that and try again."
 
 linearizeTensorProducts :: [Term] -> [Term]
 linearizeTensorProducts = concatMap detensor 
@@ -249,3 +249,5 @@ writeToDir ts dirName = do
 ------------------------------------------------------------------
 -- End of testing functions.
 ------------------------------------------------------------------
+
+
