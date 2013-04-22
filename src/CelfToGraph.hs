@@ -176,10 +176,15 @@ checkCounterFactualCausality l = do
             let allChecks = map (linkExists a1 a2) allGraphs
             if (and allChecks) then lift $ tellerPrintLn $ "Yes: " ++ a2 ++ " is caused by " ++ a1 ++ " in all the generated narratives!"
                                else do
-                                let indices = findIndices (==False) allChecks 
-                                let counterexamples = map ((\s->('_':s)++".pdf ").show) indices
+                                let indicesTrue = findIndices (==True) allChecks 
+                                let indicesFalse = findIndices (==False) allChecks 
+                                let examples = map ((\s->('_':s)++".pdf ").show) indicesTrue
+                                let counterexamples = map ((\s->('_':s)++".pdf ").show) indicesFalse
                                 lift $ tellerPrint $ "No: " ++ a2 ++ " is not caused by " ++ a1 ++ " in the following narratives: "
                                 lift $ sequence_ $ map tellerPrint counterexamples
+                                when (not (null examples)) $ do
+                                    lift $ tellerPrint $ "Yes: " ++ a2 ++ " is caused by " ++ a1 ++ " in the following narratives: "
+                                    lift $ sequence_ $ map tellerPrint examples
                                 lift $ tellerPrintLn "" -- add new line
 
 main :: IO ()
