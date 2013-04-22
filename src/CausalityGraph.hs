@@ -9,7 +9,7 @@ import Data.GraphViz hiding (toNode)
 import Data.GraphViz.Attributes.Complete
 import qualified Data.Text.Lazy as T
 
-import Data.List (nub, (\\), sort, group, partition)
+import Data.List (nub, (\\), sort, group, partition, intersect)
 import qualified Data.Map as Map
 import Data.Maybe
 
@@ -89,12 +89,24 @@ executeActions initEnv (action:as) currentRLoc currentNode currentGraph =
                    then (newNodeId+1, (newNodeId,[newNodeId-1],nodeLabel): orNode: currentGraph)
                    else (newNodeId+1, (newNodeId,(newNodeId-1):directLinksNodeList,nodeLabel): orNode: currentGraph)
  
-        rL1 = changeMapNonOR directLinks currentRLoc
-        rL2 = changeMapOR orLinks (newNodeId-2) rL1
+        conservedRes = conservedResources action -- new
+        remExcludeConserved = filter (\(t,_,_) ->(not $ t `elem` conservedRes)) -- new 
+        rL1 = changeMapNonOR (remExcludeConserved directLinks) currentRLoc -- new
+        rL2 = changeMapOR (remExcludeConserved orLinks) (newNodeId-2) rL1 -- new
+        --rL1 = changeMapNonOR directLinks currentRLoc
+        --rL2 = changeMapOR orLinks (newNodeId-2) rL1
 
         introduces = linearizeTensorProducts [(getRightLolli action)]
-        newRLoc = foldr (\k -> Map.insertWith (++) k [newNodeId-1]) rL2 introduces
+        introExcludeConserved = introduces \\ conservedRes -- new
+        newRLoc = foldr (\k -> Map.insertWith (++) k [newNodeId-1]) rL2 introExcludeConserved -- new
+        --newRLoc = foldr (\k -> Map.insertWith (++) k [newNodeId-1]) rL2 introduces
     in executeActions initEnv as newRLoc newNodeId newGraph
+
+conservedResources ((:-@:) t1 t2 _) = 
+    let left = linearizeTensorProducts [t1]
+        right = linearizeTensorProducts [t2]
+    in intersect left right
+conservedResources t = error $ "[conservedResources] In the traces given, one of the actions is not a lollipop! Please fix that and try again." 
 
 -- | `changeMapNonOR` updates the resources location map with the new nodes information.
 --    If the first argument is [], then the map is unchanged.
