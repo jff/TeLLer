@@ -25,11 +25,11 @@ data BOP = And | Or | Iff deriving (Show, Eq)
 
 
 ex0 = "link a1 a2"
-ex1 = "link a1 [a2,a3]"
-ex2 = "link [a1,a2] a3"
-ex3 = "link [a1,a2] [a3,a4]"
-ex4 = "causes a1"
-ex5 = "causes [a1,a2]"
+ex1 = "link a1 [a2,a3]" -- todo
+ex2 = "link [a1,a2] a3" -- todo
+ex3 = "link [a1,a2] [a3,a4]" -- todo
+ex4 = "causes a1" -- todo
+ex5 = "causes [a1,a2]" -- todo
 ex6 = ex0 ++ " && " ++ ex0
 ex7 = ex0 ++ " && " ++ ex1
 ex8 = ex0 ++ " || " ++ ex0

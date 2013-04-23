@@ -137,6 +137,13 @@ loadFile fileName = do
                                                 let newGraphs = graphsFromTraces newTraces
                                                 modify (\state -> state {traces = newTraces, graphs = newGraphs})
                                                 lift $ tellerPrintLn $ "Done. " ++ show (length newGraphs) ++ " graphs generated."
+                                                let Trace _ actTraces = newTraces
+                                                let nonDupActTraces = nub actTraces
+                                                let allDifferent = nonDupActTraces == actTraces
+                                                let duplicateActTraces = actTraces \\ nonDupActTraces
+                                                let indicesDuplicates = findIndices (\e -> e `elem` duplicateActTraces) actTraces
+                                                if(allDifferent) then lift $ tellerPrintLn $ "(All traces are different.)"
+                                                                 else lift $ tellerPrintLn $ "(Not all traces are different: " ++ show indicesDuplicates ++ ")"
                                 (ExitFailure e) -> do
                                                     lift $ tellerPrintLn $ "An error occurred when running celf on the file provided. \
                                                                           \ Error code: "++show e++".\n" ++ err
