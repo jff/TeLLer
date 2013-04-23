@@ -29,6 +29,7 @@ import Term (detensor, deWith)
 import CLI
 import Printer
 import CausalityGraph hiding (getActionName)
+import CausalityGraphQueries
 
 
 ------------------------------------------------------------------
@@ -160,8 +161,39 @@ writeGraphsToDir dirName = do
                            lift $ sequence_ ioCommands
                            lift $ tellerPrintLn $ "Done. " ++ show (length graphs) ++ " graphs written to directory " ++ dirName ++ "."
  
+
+-- remove words ws from list of words lws
+removeWords ws lws = filter (\w -> not(w `elem` ws)) lws
+
+processQuery :: CGQuery -> CStateIO ()
+processQuery query = do
+    allGraphs <- gets graphs
+    if (null allGraphs) then lift $ tellerPrintLn $ "You need to load a file before querying the graphs."
+                        else do
+            let (queryResult, indicesTrue) = checkBooleanQuery query allGraphs
+            let numGraphs = length allGraphs
+            let allValid = numGraphs == length indicesTrue
+            if (queryResult && allValid) then lift $ tellerPrintLn $ "Yes: the query is valid in all the generated narratives!"
+                               else do
+                                let indicesFalse = [0..numGraphs-1]\\indicesTrue
+                                let examples = map ((\s->('_':s)++".pdf ").show) indicesTrue
+                                let counterexamples = map ((\s->('_':s)++".pdf ").show) indicesFalse
+                                if (length counterexamples == numGraphs) 
+                                 then lift $ tellerPrint $ "No: there are no graphs satisfying the query."
+                                 else do
+                                  lift $ tellerPrint $ "No: the query is not valid in the following narratives: "
+                                  lift $ sequence_ $ map tellerPrint counterexamples
+                                when (not (null examples)) $ do
+                                    lift $ tellerPrint $ "Yes: the query is valid in the following narratives: "
+                                    lift $ sequence_ $ map tellerPrint examples
+                                lift $ tellerPrintLn "" -- add new line
+
+
+    
+{--
 checkCounterFactualCausality :: [String] -> CStateIO ()
-checkCounterFactualCausality l = do
+checkCounterFactualCausality ws = do
+    let l = removeWords ["and", "link"] ws
     if (length l < 2) then do
         lift $ tellerWarning "The command 'link' takes two actions as arguments."
                       else do
@@ -187,11 +219,14 @@ checkCounterFactualCausality l = do
                                     lift $ sequence_ $ map tellerPrint examples
                                 lift $ tellerPrintLn "" -- add new line
 
+--}
+
 main :: IO ()
 main = do
   printWelcomeMessage
   evalStateT mainLoop initialState
   return ()
+
 
 mainLoop :: CStateIO CState
 mainLoop = do
@@ -202,28 +237,31 @@ mainLoop = do
     Nothing -> lift $ putStrLn goodbye_msg >> return state
     Just c  -> 
      do lift $ addHistory c 
-        continue <- case c of
+        continue <- case (parse queryParser "" c) of
+            Right query -> processQuery query >> mainLoop
+            Left e -> do 
+                --lift $ putStrLn $ show e 
+                case c of
 
+                    -- Write to folder
+                    ('w':f) -> writeGraphsToDir ((head.words) f)  >> mainLoop
 
-            -- Write to folder
-            ('w':f) -> writeGraphsToDir ((head.words) f)  >> mainLoop
+                    -- Link from a1 to a2
+        --            ('l':'i':'n':'k':as) -> checkCounterFactualCausality (words as) >> mainLoop
 
-            -- Link from a1 to a2
-            ('l':'i':'n':'k':as) -> checkCounterFactualCausality (words as) >> mainLoop
+                    -- Load file.
+                    ['l']    -> loadFileAsk >> mainLoop
+                    ('l':f) -> loadFile ((head.words) f)  >> mainLoop
 
-            -- Load file.
-            ['l']    -> loadFileAsk >> mainLoop
-            ('l':f) -> loadFile ((head.words) f)  >> mainLoop
+                    -- Quit.
+                    ('q':_) -> lift (putStrLn goodbye_msg) >> return state
 
-            -- Quit.
-            ('q':_) -> lift (putStrLn goodbye_msg) >> return state
+                    -- Help options.
+                    ('?':_) -> lift (tellerPrintLn helpOptions) >> mainLoop
 
-            -- Help options.
-            ('?':_) -> lift (tellerPrintLn helpOptions) >> mainLoop
-
-            -- All other commands are not recognized.
-            _       -> do lift $ putStrLn $ "Command " ++ c ++ " not recognized."
-                          mainLoop
+                    -- All other commands are not recognized.
+                    _       -> do lift $ putStrLn $ "Command " ++ c ++ " not recognized."
+                                  mainLoop
         return state
 
 printWelcomeMessage :: IO ()
