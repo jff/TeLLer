@@ -183,7 +183,7 @@ linkExists x y g =
 
 showActionTraces :: Traces -> [String]
 showActionTraces (Trace _ at) = map (seqActions . map getActionName) at
-    where seqActions = foldr1  (\a b -> (a++";"++b))
+    where seqActions = foldr1  (\a b -> (a++";\n"++b))
 
 ----------------------------------
 -- Functions on graphs
