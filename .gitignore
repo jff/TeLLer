@@ -5,3 +5,4 @@ TestRunner
 dist
 .DS_Store
 TAGS
+src/CelfToGraphConf.hs

@@ -21,7 +21,7 @@ data CGQuery = Link ActionName ActionName
 
 
 data UOP = Not deriving (Show,Eq)
-data BOP = And | Or | Iff deriving (Show, Eq)
+data BOP = And | Or | Iff | If deriving (Show, Eq)
 
 
 ex0 = "link a1 a2"
@@ -41,9 +41,9 @@ def = emptyDef{ commentStart = "{-"
               , commentEnd = "-}"
               , identStart = letter
               , identLetter = alphaNum
-              , opStart = oneOf "~|&="
-              , opLetter = oneOf "~|=&"
-              , reservedOpNames = ["~","||", "&&", "==", "link"]
+              , opStart = oneOf "~|&=<"
+              , opLetter = oneOf "~|=&<>"
+              , reservedOpNames = ["~","||", "&&", "==", "<=>", "=>", "<=", "link"]
               , reservedNames = []
               }
 
@@ -61,6 +61,9 @@ table = [ [Prefix (m_reservedOp "~" >> return (Uno Not))]
         , [Infix (m_reservedOp "&&" >> return (Duo And)) AssocLeft]
         , [Infix (m_reservedOp "||" >> return (Duo Or)) AssocLeft]
         , [Infix (m_reservedOp "==" >> return (Duo Iff)) AssocLeft]
+        , [Infix (m_reservedOp "<=>" >> return (Duo Iff)) AssocLeft]
+        , [Infix (m_reservedOp "<=" >> return (Duo If)) AssocLeft]
+        , [Infix (m_reservedOp "=>" >> return (flip (Duo If))) AssocLeft]
         ]
 
 parseLink = do
@@ -96,8 +99,11 @@ checkBooleanQuery (Duo Or query1 query2) graphs =
         unionIndices = is1 `union` is2
         numGraphs = length graphs
     in (numGraphs == length unionIndices, unionIndices)
+-- query1 <= query2  <=>  query1 || ~query2
+checkBooleanQuery (Duo If query1 query2) graphs = checkBooleanQuery (Duo Or query1 (Uno Not query2)) graphs
+checkBooleanQuery (Duo Iff query1 query2) graphs = checkBooleanQuery (Duo And (Duo If query1 query2) (Duo If query2 query1)) graphs
 
-checkBooleanQuery _ _ = error "[checkBooleanQuery] NOT IMPLEMENTED!"
+--checkBooleanQuery _ _ = error "[checkBooleanQuery] NOT IMPLEMENTED!"
 
 
 ------------------------------------------------------------------

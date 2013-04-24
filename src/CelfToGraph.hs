@@ -159,8 +159,11 @@ writeGraphsToDir dirName = do
                    else do lift $ createDirectory dirName
                            -- Write graphs
                            graphs <- gets graphs
-                           let createPDF filename g = runGraphviz (graphToDot cGraphParams g) Pdf filename
-                           let ioCommands = zipWith ($) [createPDF (dirName++"/"++((show n)++".pdf")) | n<-[0..]] graphs
+                           let createGVFile filename filetype g = runGraphviz (graphToDot cGraphParams g) filetype filename
+                           let ioCommands = zipWith ($) [createGVFile (dirName++"/"++((show n)++".pdf")) Pdf | n<-[0..]] graphs
+                           lift $ sequence_ ioCommands
+                           -- Write .dot files
+                           let ioCommands = zipWith ($) [createGVFile (dirName++"/"++((show n)++".dot")) DotOutput | n<-[0..]] graphs
                            lift $ sequence_ ioCommands
                            -- Write traces
                            traces <- gets traces
