@@ -193,11 +193,11 @@ processQuery query = do
                                  else do
                                   lift $ tellerPrint $ "No: the query is not valid in the following narratives: "
                                   lift $ sequence_ $ map tellerPrint counterexamples
-                                  lift $ tellerPrintLn "" -- add new line
+                                  lift $ tellerPrintLn "\n" -- add 2 new lines
                                 when (not (null examples)) $ do
-                                    lift $ tellerPrint $ "Yes: the query is valid in the following narratives: "
+                                    lift $ tellerPrint $ "\nYes: the query is valid in the following narratives: "
                                     lift $ sequence_ $ map tellerPrint examples
-                                lift $ tellerPrintLn "" -- add new line
+                                lift $ tellerPrintLn "\n" -- add 2 new lines
 
 
     

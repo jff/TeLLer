@@ -1,103 +1,110 @@
 %% Encoding of the Madame Bovary story.
+%% Encoding generates 70
 
-% All atoms in the story
+%% All atoms in the story
+emma : type.
+charles : type.
+homais : type.
+leon : type.
+rodolphe : type.
+emmaCharlesMarried : type.
 covent : type.
 novels : type.
 grace : type.
 education : type.
-asp : type.
-cb : type.
-be : type.
+escapism : type.
+emmaIsBored : type.
 ball : type.
-lb : type.
-llove : type.
-eawareLlove : type.
-rint : type.
-rloveexp : type.
-re : type.
-br : type.
-eguilt : type.
-homais : type.
-hyp : type.
-ecest : type.
-erebel : type.
-lheur : type.
+leonIsBored : type.
+leonInlove : type.
+emmaBelievesLeonsLove : type.
+rodolpheDecidedToSeduce : type.
+rodolphePastLoveLife : type.
+rodolpheEmmaTogether : type.
+rodolpheIsBored : type.
+emmaFeelsGuilty : type.
+hypolyteSurgeryPlans : type.
+emmaCharlesHappy : type.
+emmaRebels : type.
+lheureux : type.
 debt : type.
-rgift : type.
-rhumiliated : type.
-laware : type.
-de : type.
-econcern : type.
-ellove : type.
-elrel : type.
+gift : type.
+rodolpheIsHumiliated : type.
+emmaIsDespaired : type.
+charlesIsConcerned : type.
+emmaInLove : type.
+leonEmmaTogether : type.
 arsenic : type.
 inheritance : type.
 denounced : type.
 ruin : type.
-edead : type.
+emmaIsDead : type.
 
-spendYearsInCovent : type = covent -o {!novels * !grace * !education}.
-readRomanticNovels : type = novels -o {@asp * @asp * @asp * @asp}.
-marryCharles  : type = asp * grace * cb -o {@be}.
-invitedToBall : type = grace -o {@ball}.
-goToBall : type = ball * asp -o {@asp * @asp * @asp * @asp}.
-dontGoToBall : type = ball -o {@be}.
-leonFallsInLove : type = grace * novels * lb -o {@llove}. % debanged
-emmaRealizesLove : type = llove * be -o {@eawareLlove * @llove}. % consume-repro
-pushLeonAway : type = llove * eawareLlove -o {@be}.
-rodolpheSeduce : type = grace -o {@rint}.
-acceptRodolphe : type = asp * asp * asp * asp * rint -o {@re}. % debanged
-rodolpheRelationshipFalters : type =  re -o {@br * @eguilt * @re}. % consume repro
-persuadeCharles : type = eguilt * homais -o {@hyp * @ecest}.
-amputateHypolyte : type = ecest * hyp -o {!erebel * !lheur}.
-purchaseGift : type = lheur -o {@debt * @rgift}.
-offerGift : type = rgift -o {@rhumiliated * @laware}.
-purchaseProstheticLeg : type = erebel * lheur -o {@debt * @debt * @debt}.
-rodolpheBreakUp : type = rhumiliated * rloveexp * re -o {@de}.
-getSick : type = de -o {@debt * @debt * @debt * @debt * !econcern}.
-meetLeonAgain : type = econcern * homais * grace * education -o {@llove * @ellove}.
-acceptLeonAdvances : type = llove * ellove * erebel -o {@elrel}.
-mrBovaryDeath : type = elrel * econcern * homais -o {@arsenic * @inheritance * @elrel}. % consume repro
-reimburseSomeDebt : type = inheritance * lheur * debt * debt * debt * debt -o {1}.
-leonReceivesLetter : type = elrel -o {@denounced * @elrel}.
-loveForLeonFalters : type = ellove -o {@be}.
-leonsBoss : type = llove * denounced -o {1}.
-contractDebts : type = be -o {@debt}.
-contractImportantDebts : type = be -o {@debt * @debt * @debt}.
-ruinByDebt : type = debt * debt * debt * debt * debt * debt * debt -o {@ruin}.
-suicide : type = ruin * arsenic * erebel -o {@edead}.
+emmaSpendsYearsInCovent : type = emma * covent -o {!novels * !grace * !education * @emma}.
+emmaReadsRomanticNovels : type = emma * novels -o {@escapism * @escapism * @emma}. %remove one diminishes amount of stories 
+emmaMarriesCharles  : type = emma * escapism * grace * charles -o {emmaIsBored * @emma *!emmaCharlesMarried}.
+emmaInvitedToBall : type = emma * emmaCharlesMarried * grace -o {@ball * @emma}.
+emmaGoesToBall : type = emma * ball * escapism -o {@escapism * @escapism * @escapism * @escapism * @emma}.
+emmaDoesNotGoToBall : type = emma * ball -o {emmaIsBored * @emma}.
+leonFallsInLove : type = emma * grace * novels * leonIsBored -o {@leonInlove * @emma}. % debanged
+emmaDiscoversLeonsLove : type = emma * leonInlove * emmaIsBored -o {@emmaBelievesLeonsLove * @leonInlove * @emma}. % possibility insertion what-if here
+emmaPushesLeonAway : type = emma * leonInlove * emmaBelievesLeonsLove * emmaCharlesMarried -o {emmaIsBored * @escapism * @emma}.
+rodolpheDecidesToSeduceEmma : type = emma * grace * emmaCharlesMarried -o {@rodolpheDecidedToSeduce * @emma}.
+emmaAcceptsRodolpheAdvances : type = emma * escapism * escapism * escapism * escapism * rodolpheDecidedToSeduce -o {@rodolpheEmmaTogether * @emma}. % debanged
+rodolpheRelationshipFalters : type =  emma * rodolpheEmmaTogether -o {@rodolpheIsBored * @emmaFeelsGuilty * @rodolpheEmmaTogether * @emma}. % consume repro
+charlesDecidesToOperateHypolyte : type = emma * charles * emmaCharlesMarried * emmaFeelsGuilty * homais -o {@hypolyteSurgeryPlans * @emmaCharlesHappy * @emma}.
+hypolyteIsAmputated : type = emma * charles * emmaCharlesHappy * hypolyteSurgeryPlans -o {!emmaRebels * !lheureux * @emma}.
+emmaPurchasesGift : type = emma * rodolpheEmmaTogether * lheureux -o {@debt * @gift * @emma * @rodolpheEmmaTogether}.
+emmaOffersGift : type = emma *  rodolpheEmmaTogether * gift -o {@rodolpheIsHumiliated * @emma * @rodolpheEmmaTogether}.
+emmaPurchasesProstheticLeg : type = emma * emmaRebels * lheureux -o {@debt * @debt * @emma}.
+rodolpheBreaksUp : type = emma * rodolpheIsBored * rodolpheIsHumiliated * rodolphePastLoveLife * rodolpheEmmaTogether -o {@emmaIsDespaired * @emma}.
+emmaJumpsThroughWindow : type = emma * emmaIsDespaired * emmaRebels -o {@emmaIsDead}.
+emmaGetsSick : type = emma * emmaIsDespaired -o {@debt * @debt * @debt * @debt * !charlesIsConcerned * @emma}.
+emmaMeetsLeonAgain : type = emma * charlesIsConcerned * homais * grace * education -o {@leonInlove * @emmaInLove * @emma}.
+emmaAcceptsLeonsAdvances : type = emma * leonInlove * emmaInLove * emmaRebels -o {@leonEmmaTogether * @emmaInLove * @leonInlove * @emma}.
+emmaLearnsBovaryFatherDeath : type = emma * leonEmmaTogether * charlesIsConcerned * homais -o {@arsenic * @inheritance * @leonEmmaTogether * @emma}. % consume repro
+emmaReimbursesSomeDebt : type = emma * inheritance * lheureux * debt * debt * debt * debt -o {@emma}.
+leonsMotherReceivesAnonymousLetter : type = emma * emmaCharlesMarried * leonEmmaTogether -o {@denounced * @leonEmmaTogether * @emma}.
+emmasLoveForLeonFalters : type = emma * leonEmmaTogether * emmaInLove -o {@emmaIsBored * @emma * @leonEmmaTogether}.
+bossDiscussesEmmaWithLeon : type = emma * leonEmmaTogether * leonInlove * denounced -o {@emma * @leonEmmaTogether}.
+emmaContractsDebts : type = emma * emmaIsBored -o {@debt * @emma}.
+emmaContractsImportantDebts : type = emma * emmaIsBored -o {@debt * @debt * @debt * @emma}.
+emmaBecomesRuined : type = emma * debt * debt * debt * debt * debt * debt * debt -o {@ruin * @emma}.
+emmaCommitsSuicide : type = emma * ruin * arsenic * emmaRebels -o {@emmaIsDead}.
 init : type =
- { @covent * @lb * @cb * !rloveexp * !homais
-        * @spendYearsInCovent
-        * @readRomanticNovels
-        * @invitedToBall 
-        * @marryCharles 
-        * @(goToBall & dontGoToBall)
+ { covent * @emma * @leonIsBored * !charles * !rodolphePastLoveLife * !homais
+        * @emmaSpendsYearsInCovent
+        * @emmaReadsRomanticNovels % if "bang" the process hangs (see v. 5). Potential to play with escapisms threshold levels here.
+        * @emmaReadsRomanticNovels % two max of those. 
+        * @emmaInvitedToBall 
+        * @emmaMarriesCharles 
+        * @(emmaGoesToBall & emmaDoesNotGoToBall)
         * @leonFallsInLove
-        * @emmaRealizesLove
-        * @pushLeonAway
-        * @rodolpheSeduce
-        * @acceptRodolphe
+        * @emmaDiscoversLeonsLove
+        * @emmaPushesLeonAway
+        * @rodolpheDecidesToSeduceEmma
+        * @emmaAcceptsRodolpheAdvances
         * @rodolpheRelationshipFalters
-        * @persuadeCharles
-        * @amputateHypolyte
-        * @purchaseGift
-        * @offerGift
-        * @purchaseProstheticLeg
-        * @rodolpheBreakUp
-        * @getSick
-        * @meetLeonAgain
-        * @acceptLeonAdvances
-        * @mrBovaryDeath
-        * @reimburseSomeDebt
-        * @leonReceivesLetter
-        * @loveForLeonFalters
-        * @leonsBoss
-        * @contractDebts
-        * @contractImportantDebts
-        * @ruinByDebt
-        * @suicide
+        * @charlesDecidesToOperateHypolyte
+        * @hypolyteIsAmputated
+        * @emmaPurchasesGift
+        * @emmaOffersGift
+        * @emmaPurchasesProstheticLeg
+        * @rodolpheBreaksUp
+        * @emmaJumpsThroughWindow
+        * @emmaGetsSick
+        * @emmaMeetsLeonAgain
+        * @emmaAcceptsLeonsAdvances
+        * @emmaLearnsBovaryFatherDeath
+        * @emmaReimbursesSomeDebt
+        * @leonsMotherReceivesAnonymousLetter
+        * @emmasLoveForLeonFalters
+        * @bossDiscussesEmmaWithLeon
+        * !emmaContractsDebts
+        * !emmaContractsImportantDebts
+        * @emmaBecomesRuined
+        * @emmaCommitsSuicide
 }.
 
-#query * * * 100 (init -o {edead}).
+#query * * * 100 (init -o {emmaIsDead}).
 
