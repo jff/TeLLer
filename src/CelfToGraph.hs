@@ -189,10 +189,11 @@ processQuery query = do
                                 let examples = map ((\s->('_':s)++".pdf ").show) indicesTrue
                                 let counterexamples = map ((\s->('_':s)++".pdf ").show) indicesFalse
                                 if (length counterexamples == numGraphs) 
-                                 then lift $ tellerPrint $ "No: there are no graphs satisfying the query."
+                                 then lift $ tellerPrintLn $ "No: there are no graphs satisfying the query."
                                  else do
                                   lift $ tellerPrint $ "No: the query is not valid in the following narratives: "
                                   lift $ sequence_ $ map tellerPrint counterexamples
+                                  lift $ tellerPrintLn "" -- add new line
                                 when (not (null examples)) $ do
                                     lift $ tellerPrint $ "Yes: the query is valid in the following narratives: "
                                     lift $ sequence_ $ map tellerPrint examples

@@ -15,6 +15,7 @@ import Data.List (intersect, union, findIndices, (\\))
 
 type ActionName = String
 data CGQuery = Link ActionName ActionName
+             | Exists ActionName -- Shortcut for Link "init" ActionName
              | Uno UOP CGQuery
              | Duo BOP CGQuery CGQuery
              deriving (Show, Eq)
@@ -43,7 +44,7 @@ def = emptyDef{ commentStart = "{-"
               , identLetter = alphaNum
               , opStart = oneOf "~|&=<"
               , opLetter = oneOf "~|=&<>"
-              , reservedOpNames = ["~","||", "&&", "==", "<=>", "=>", "<=", "link"]
+              , reservedOpNames = ["~","||", "&&", "==", "<=>", "=>", "<=", "link", "exists"]
               , reservedNames = []
               }
 
@@ -72,9 +73,15 @@ parseLink = do
     a2 <- m_identifier
     return (Link a1 a2)
 
+parseExists = do
+    m_reservedOp "exists"
+    a <- m_identifier
+    return (Exists a)
+
 
 action = m_parens queryParser
        <|> parseLink 
+       <|> parseExists
 
 
 --- Queries semantics
@@ -85,22 +92,29 @@ checkBooleanQuery (Link a1 a2) graphs =
     let allChecks   = map (linkExists a1 a2) graphs
         indicesTrue = findIndices (==True) allChecks
     in (and allChecks, indicesTrue)
+
+checkBooleanQuery (Exists a) graphs = checkBooleanQuery (Link "init" a) graphs
+
 checkBooleanQuery (Uno Not query) graphs = 
     let (r, is) = checkBooleanQuery query graphs
         numGraphs = length graphs
     in (not r, [0..numGraphs-1] \\ is)
+
 checkBooleanQuery (Duo And query1 query2) graphs = 
     let (r1, is1) = checkBooleanQuery query1 graphs
         (r2, is2) =checkBooleanQuery query2 graphs
     in (r1 && r2, is1 `intersect` is2)
+
 checkBooleanQuery (Duo Or query1 query2) graphs = 
     let (r1, is1) = checkBooleanQuery query1 graphs
         (r2, is2) = checkBooleanQuery query2 graphs
         unionIndices = is1 `union` is2
         numGraphs = length graphs
     in (numGraphs == length unionIndices, unionIndices)
+
 -- query1 <= query2  <=>  query1 || ~query2
 checkBooleanQuery (Duo If query1 query2) graphs = checkBooleanQuery (Duo Or query1 (Uno Not query2)) graphs
+
 checkBooleanQuery (Duo Iff query1 query2) graphs = checkBooleanQuery (Duo And (Duo If query1 query2) (Duo If query2 query1)) graphs
 
 --checkBooleanQuery _ _ = error "[checkBooleanQuery] NOT IMPLEMENTED!"
