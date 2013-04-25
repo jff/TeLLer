@@ -281,12 +281,18 @@ printWelcomeMessage = tellerPrintLn $ logo ++ "\nEnter ? for help."
 helpOptions :: String
 helpOptions = 
     "Available commands:\n\
-  \  \tw <foldername>: writes the causality graphs to folder <foldername>\n\
-  \  \tl <filename>: load file <filename>\n\
-  \  \tl: ask for file name and load it\n\
+  \  \tl <filename>: loads Celf file <filename> and generates structured graphs\n\
+  \  \tl: asks for Celf file name, loads it, and generates structured graphs\n\
+  \  \tw <foldername>: writes the structured graphs to folder <foldername>\n\
+  \  \texists <a>: checks if action <a> exists in the generated graphs\n\
   \  \tlink <a1> <a2>: checks if action <a2> is caused by <a1> in the generated graphs\n\
   \  \tq: quit\n\
-  \  \t?: help\n"
+  \  \t?: help\n\
+  \  \n\
+  \  \tNOTE:The commands 'exists' and 'link' can be combined with the boolean operators:\n\
+  \  \t      ~, &&, ||, <=, =>, and <=>.\n\
+  \  \tFor example: \n\
+  \  \t      link a1 a2  <=  exists a3 && exists a4\n"
 
 logo :: String
 logo = " \
