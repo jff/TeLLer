@@ -1,4 +1,4 @@
-# TeLLer v0.1.9
+# TeLLer: Linear Logic Applied to Story Telling (v0.1.9)
 
 TeLLer is a collection of tools that explores the use of linear logic applied to story telling.
 Currently, there are two available tools:
