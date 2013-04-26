@@ -3,7 +3,8 @@
 module Main where
 
 -- Import GraphViz to generate graphs
-import Data.Graph.Inductive (Gr, mkGraph)
+import Data.Graph.Inductive --(Gr, mkGraph, equal)
+import Data.Graph.Inductive.Query.BFS (level)
 import Data.GraphViz (runGraphviz, graphToDot,GraphvizOutput(..), isGraphvizInstalled)
 
 import System.IO (hPutStrLn, stderr, stdin, openFile, IOMode(..), hClose, hGetContents)
@@ -16,7 +17,7 @@ import Control.Monad.State -- (lift, evalStateT, get, gets, put, modify, when)
 import qualified Data.Map as Map -- hiding (null, foldr)
 import Control.Applicative
 import Data.Maybe (fromJust, fromMaybe)
-import Data.List (nub, sort, groupBy, (\\), partition, findIndices)
+import Data.List (nub, sort, groupBy, (\\), partition, findIndices, findIndex)
 
 import Text.ParserCombinators.Parsec hiding (State)
 
@@ -129,7 +130,7 @@ loadFile fileName = do
     fileExists <- lift $ doesFileExist fileName
     if (fileExists) then do fileContents <- lift $ readFile fileName 
 --                            out <- lift $ readProcess celf_cmd [fileName] ""
-                            (exitcode, out, err) <- lift $ readProcessWithExitCode celf_cmd [fileName] ""
+                            (exitcode, out, err) <- lift $ readProcessWithExitCode celf_cmd [fileName] []
                             case exitcode of
                                 ExitSuccess -> do
                                                 let celfOut = parseString out
@@ -146,9 +147,50 @@ loadFile fileName = do
                                                                  else lift $ tellerPrintLn $ "(Not all traces are different: " ++ show indicesDuplicates ++ ")"
                                 (ExitFailure e) -> do
                                                     lift $ tellerPrintLn $ "An error occurred when running celf on the file provided. \
-                                                                          \ Error code: "++show e++".\n" ++ err
+                                                                          \ Error code: "++show e++".\n" ++ err ++ out
                     else lift (tellerError $ "ERROR: File '" ++ fileName ++ "' does not exist!") 
 
+
+-- | 'showStats' displays some statistics
+showStats = do
+    traces <- gets traces
+    graphs <- gets graphs
+    let numGraphs = length graphs
+    let uniqueGraphs = nub graphs
+    let numUniqueGraphs = length uniqueGraphs
+    lift $ tellerPrint $ "Number of graphs generated:\t" ++ show numGraphs
+    if(numUniqueGraphs < numGraphs) -- some duplicates
+     then do let duplicateGraphs = graphs \\ uniqueGraphs
+             let indicesUniqueGraphs = map (fromMaybe (-1)) $ (map findIndex (map (==) uniqueGraphs)) <*> [graphs]
+             let indicesDuplicateGraphs = [0..numGraphs-1] \\ indicesUniqueGraphs
+             lift $ tellerPrintLn $ "\n\tNumber of unique graphs:\t"     ++ show numUniqueGraphs ++ "\t("++show indicesUniqueGraphs++")"
+             lift $ tellerPrintLn $ "\tNumber of duplicated graphs:\t" ++ show (numGraphs-numUniqueGraphs)++ "\t("++show indicesDuplicateGraphs++")"
+     else lift $ tellerPrintLn $ "\t(all of them different)"
+    let Trace _ actTraces = traces
+    let nonDupActTraces = nub actTraces
+    let allDifferent = nonDupActTraces == actTraces
+    let duplicateActTraces = actTraces \\ nonDupActTraces
+    let indicesDuplicates = findIndices (\e -> e `elem` duplicateActTraces) actTraces
+    if(allDifferent) then lift $ tellerPrintLn $ "All the traces are different."
+                     else lift $ tellerPrintLn $ "Not all traces are different: " ++ show indicesDuplicates 
+
+instance (Eq a, Ord a, Eq b) => Eq (Gr a b) where
+    g1 == g2 = g1 `myEquals` g2
+     where
+        myEquals g1 g2 =
+            let l1 = graphToLevelSortedList g1
+                l2 = graphToLevelSortedList g2
+            in l1==l2
+
+        graphToLevelSortedList g = 
+            let levels = level 0 g -- [(NodeId, Level)]
+                groupedLevels = groupBy (\p1 p2 -> snd p1 == snd p2) levels -- [[(NodeId,Level)]]
+                unzippedLevelsWithNames = map ((\p -> (sort (map (getNodeLabel g) (fst p)), head (snd p))) . unzip) groupedLevels
+            in unzippedLevelsWithNames
+
+        getNodeLabel g nodeid =
+            let maybeName = lookup nodeid (labNodes g)
+            in  fromJust maybeName
 
 
 -- | 'writeGraphsToDir' writes all graphs to the directory given
@@ -263,6 +305,9 @@ mainLoop = do
                     -- Load file.
                     ['l']    -> loadFileAsk >> mainLoop
                     ('l':f) -> loadFile ((head.words) f)  >> mainLoop
+            
+                    -- Display some statistics (no. of graphs, unique graphs, etc.)
+                    "stats" -> showStats >> mainLoop
 
                     -- Quit.
                     ('q':_) -> lift (putStrLn goodbye_msg) >> return state
