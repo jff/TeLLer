@@ -1,6 +1,6 @@
 # TeLLer: Linear Logic Applied to Story Telling (v0.1.9)
 
-TeLLer is a collection of tools that explores the use of linear logic applied to story telling.
+TeLLer is a collection of tools that explore the use of linear logic applied to narrative generation and story telling.
 Currently, there are two available tools:
 
  1. TeLLer: an interactive linear logic prover and proof explorer that is currently being used to study causality in interactive story telling.
