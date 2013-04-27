@@ -331,10 +331,11 @@ helpOptions =
   \  \tw <foldername>: writes the structured graphs to folder <foldername>\n\
   \  \texists <a>: checks if action <a> exists in the generated graphs\n\
   \  \tlink <a1> <a2>: checks if action <a2> is caused by <a1> in the generated graphs\n\
+  \  \tstats: shows how many graphs and traces are unique and how many are duplicated\n\
   \  \tq: quit\n\
   \  \t?: help\n\
   \  \n\
-  \  \tNOTE:The commands 'exists' and 'link' can be combined with the boolean operators:\n\
+  \  \tNOTE: The commands 'exists' and 'link' can be combined with the boolean operators:\n\
   \  \t      ~, &&, ||, <=, =>, and <=>.\n\
   \  \tFor example: \n\
   \  \t      link a1 a2  <=  exists a3 && exists a4\n"
