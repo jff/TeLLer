@@ -1,0 +1,27 @@
+% Narrative resources
+covent: type.
+education: type.
+grace: type.
+novel: type.
+ball: type.
+escapism: type.
+emma: type.
+charles: type.
+emmaCharlesMarried: type.
+
+% Narrative actions
+emmaSpendsYearsInCovent: type = emma * covent -o {@emma * !grace * !education}.
+emmaReadsNovel: type = emma * novel -o {@emma * @escapism}.
+emmaGoesToBall: type = emma * ball -o {@emma * @escapism}.
+emmaMarries: type = emma * escapism * charles * grace -o {@emma * @charles 
+                                                         * @emmaCharlesMarried}.
+
+% Initial environment (resources + actions)
+init: type = { @emma * covent * !novel * @charles * @ball 
+             * @emmaSpendsYearsInCovent * emmaReadsNovel
+             * @emmaMarries * @emmaGoesToBall
+             }.
+
+% Celf query
+#query * * * 3 (init -o {emmaCharlesMarried}).
+
