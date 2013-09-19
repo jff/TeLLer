@@ -84,7 +84,8 @@ readStringFromUser query = do
 readFileNameFromUser :: String -> IO FilePath
 readFileNameFromUser query = do
     f <- readStringFromUser "Load file: "
-    return ((head.words) f) -- return the first word
+    if (length f > 0) then return ((head.words) f) -- return the first word
+                      else return "" -- empty string (should be documented, so that clients can deal with this)
 
 askUserForInt :: (Int->Bool) -> String -> IO Int
 askUserForInt validate query = do

@@ -8,7 +8,7 @@ import Data.Graph.Inductive.Query.BFS (level)
 import Data.GraphViz (runGraphviz, graphToDot,GraphvizOutput(..), isGraphvizInstalled)
 
 import System.IO (hPutStrLn, stderr, stdin, openFile, IOMode(..), hClose, hGetContents)
-import System.Directory (doesFileExist, doesDirectoryExist, createDirectory)
+import System.Directory (doesFileExist, doesDirectoryExist, createDirectory, removeDirectoryRecursive)
 import System.Console.Readline (readline, addHistory)
 import System.Process (readProcessWithExitCode)
 import System.Exit
@@ -39,12 +39,14 @@ import CausalityGraphQueries
 
 data CState = State {
     traces :: Traces,
-    graphs :: [Gr String String]
+    graphs :: [Gr String String],
+    fileName :: String
 } deriving Show
 
 initialState = State {
     traces = Trace [] [],
-    graphs = []
+    graphs = [],
+    fileName = ""
 }
 
 type CStateIO a = StateT CState IO a
@@ -121,7 +123,8 @@ parseString str =
 loadFileAsk :: CStateIO ()
 loadFileAsk = do
     fileName <- lift $ readFileNameFromUser "Load file: "
-    loadFile fileName
+    if ((length fileName)>0) then loadFile fileName
+                             else lift (putStrLn "Please provide a valid file name.") >> return ()
 
 -- | 'loadFile' loads the file given as a parameter, i.e.,
 --   it changes the environment to the resources and actions described in the file.
@@ -129,6 +132,7 @@ loadFile :: FilePath -> CStateIO ()
 loadFile fileName = do
     fileExists <- lift $ doesFileExist fileName
     if (fileExists) then do fileContents <- lift $ readFile fileName 
+                            modify (\state -> state {fileName = fileName})
 --                            out <- lift $ readProcess celf_cmd [fileName] ""
                             (exitcode, out, err) <- lift $ readProcessWithExitCode celf_cmd [fileName] []
                             case exitcode of
@@ -150,6 +154,30 @@ loadFile fileName = do
                                                                           \ Error code: "++show e++".\n" ++ err ++ out
                     else lift (tellerError $ "ERROR: File '" ++ fileName ++ "' does not exist!") 
 
+-- | 'reloadFile' reloads the file given by the fileName variable stored in the state
+reloadFile :: CStateIO ()
+reloadFile = do
+   fileName <- gets fileName
+   loadFile fileName 
+
+openGraph :: [String] -> CStateIO ()
+openGraph graphs = do
+    let error_message = "Please pass the number of the graph as argument."
+    if(length graphs < 1) then lift $ tellerError error_message
+                          else   do
+                               let arg = head graphs
+                               let n = reads arg :: [(Int, String)]
+                               case n of
+                                 []      -> lift $ tellerError error_message
+                                 (i,_):_ -> do
+                                              let runtime_dir = ".temp_runtime_celf2graphs"
+                                              runtime_dir_exists <- lift $ doesDirectoryExist runtime_dir
+                                              when (runtime_dir_exists) $ lift $ removeDirectoryRecursive runtime_dir
+                                              writeOnlyOneGraphToDir runtime_dir i
+                                              -- TODO: delete the temporary dir (and improve code to generate just one graph)
+                                              _ <- lift $ readProcessWithExitCode "/usr/bin/open" [runtime_dir++"/"++(show i)++".pdf"] []
+                                              -- TODO: make this open call platform-independent
+                                              return ()
 
 -- | 'showStats' displays some statistics
 showStats = do
@@ -212,6 +240,34 @@ writeGraphsToDir dirName = do
                            let ioCommands = zipWith ($) [writeFile (dirName++"/"++((show n)++".trace")) | n<-[0..]] (showActionTraces traces)
                            lift $ sequence_ ioCommands
                            lift $ tellerPrintLn $ "Done. " ++ show (length graphs) ++ " graphs written to directory " ++ dirName ++ "."
+
+-- | 'writeOnlyOneGraphToDir' writes the graph given as argument to
+--   the directory given (if the dir exists, it writes the graph anyway)
+--  This function is used by the "show" command
+writeOnlyOneGraphToDir :: FilePath -> Int -> CStateIO ()
+writeOnlyOneGraphToDir dirName gnumber = do
+    dirExists <- lift $ doesDirectoryExist dirName
+    when (not dirExists) $ lift $ createDirectory dirName
+    -- Write graph
+    graphs <- gets graphs
+    if (gnumber >= length graphs || gnumber < 0) 
+        then lift $ tellerError "ERROR: Invalid graph number."
+        else do
+                let graphToBeWritten = graphs!!gnumber -- This is safe due to the conditional test above
+                let createGVFile filename filetype g = runGraphviz (graphToDot cGraphParams g) filetype filename
+                lift $ createGVFile (dirName++"/"++((show gnumber)++".pdf")) Pdf graphToBeWritten
+                return ()
+--                let ioCommands = zipWith ($) [createGVFile (dirName++"/"++((show n)++".pdf")) Pdf | n<-[0..]] graphs
+--                           lift $ sequence_ ioCommands
+                           -- Write .dot files
+--                           let ioCommands = zipWith ($) [createGVFile (dirName++"/"++((show n)++".dot")) DotOutput | n<-[0..]] graphs
+--                           lift $ sequence_ ioCommands
+                           -- Write traces
+--                           traces <- gets traces
+--                           let ioCommands = zipWith ($) [writeFile (dirName++"/"++((show n)++".trace")) | n<-[0..]] (showActionTraces traces)
+--                           lift $ sequence_ ioCommands
+--                           lift $ tellerPrintLn $ "Done. " ++ show (length graphs) ++ " graphs written to directory " ++ dirName ++ "."
+ 
  
 
 -- remove words ws from list of words lws
@@ -284,7 +340,7 @@ main = do
 mainLoop :: CStateIO CState
 mainLoop = do
   state <- get
-  comm <- lift $ readline "Command [w, link, l, q, ?]: "
+  comm <- lift $ readline "Command [l, r, stats, link, exists, w, q, ?]: "
   lift $ tellerPrint "\n"
   case comm of
     Nothing -> lift $ putStrLn goodbye_msg >> return state
@@ -297,6 +353,7 @@ mainLoop = do
                 case c of
 
                     -- Write to folder
+                    ['w'] -> lift (putStrLn "The command w requires an argument. Please try again.") >> mainLoop
                     ('w':f) -> writeGraphsToDir ((head.words) f)  >> mainLoop
 
                     -- Link from a1 to a2
@@ -305,6 +362,13 @@ mainLoop = do
                     -- Load file.
                     ['l']    -> loadFileAsk >> mainLoop
                     ('l':f) -> loadFile ((head.words) f)  >> mainLoop
+
+                    -- Load file.
+                    ['r']       -> reloadFile >> mainLoop
+                    "reload"    -> reloadFile >> mainLoop
+
+
+                    ('s':'h':'o':'w':n)       -> openGraph (words n) >> mainLoop
             
                     -- Display some statistics (no. of graphs, unique graphs, etc.)
                     "stats" -> showStats >> mainLoop
@@ -321,13 +385,14 @@ mainLoop = do
         return state
 
 printWelcomeMessage :: IO ()
-printWelcomeMessage = tellerPrintLn $ logo ++ "\nEnter ? for help."
+printWelcomeMessage = tellerPrintLn $ logo ++ "\nEnter ? for help and available commands."
 
 helpOptions :: String
 helpOptions = 
     "Available commands:\n\
   \  \tl <filename>: loads Celf file <filename> and generates structured graphs\n\
   \  \tl: asks for Celf file name, loads it, and generates structured graphs\n\
+  \  \tr: reloads the last file to be loaded\n\
   \  \tw <foldername>: writes the structured graphs to folder <foldername>\n\
   \  \texists <a>: checks if action <a> exists in the generated graphs\n\
   \  \tlink <a1> <a2>: checks if action <a2> is caused by <a1> in the generated graphs\n\

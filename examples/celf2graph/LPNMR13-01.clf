@@ -1,5 +1,5 @@
 % Narrative resources
-covent: type.
+convent: type.
 education: type.
 grace: type.
 novel: type.
@@ -10,15 +10,15 @@ charles: type.
 emmaCharlesMarried: type.
 
 % Narrative actions
-emmaSpendsYearsInCovent: type = emma * covent -o {@emma * !grace * !education}.
-emmaReadsNovel: type = emma * novel -o {@emma * @escapism}.
-emmaGoesToBall: type = emma * ball -o {@emma * @escapism}.
+emmaSpendsYearsInConvent: type = convent -o {!grace * !education}.
+emmaReadsNovel: type = novel -o {@escapism}.
+emmaGoesToBall: type = ball -o {@escapism}.
 emmaMarries: type = emma * escapism * charles * grace -o {@emma * @charles 
                                                          * @emmaCharlesMarried}.
 
 % Initial environment (resources + actions)
-init: type = { @emma * covent * !novel * @charles * @ball 
-             * @emmaSpendsYearsInCovent * emmaReadsNovel
+init: type = { @emma * convent * !novel * @charles * @ball 
+             * @emmaSpendsYearsInConvent * emmaReadsNovel
              * @emmaMarries * @emmaGoesToBall
              }.
 

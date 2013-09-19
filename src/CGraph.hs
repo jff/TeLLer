@@ -16,16 +16,20 @@ import Syntax (Term(..))
 
 -- Configuration parameters of the causality graph (Graphviz dependent)
 cGraphParams = nonClusteredParams { 
-    globalAttributes = [ GraphAttrs { attrs = [BgColor [X11Color Transparent]]}],
+    --globalAttributes = [ GraphAttrs { attrs = [BgColor [X11Color Transparent]]}],
+    globalAttributes = [ GraphAttrs { attrs = [BgColor [toWColor Transparent]]}],
     fmtNode = cGraphLabelNodes,
     fmtEdge = const []
 }
 
 cGraphLabelNodes :: (Node,String) -> Attributes
-cGraphLabelNodes (n,'_':'l':'_':l) = [toLabel l, BgColor [X11Color Gray], style dashed, style filled]
-cGraphLabelNodes (n,_:_:_:"OR") = [toLabel "OR", Shape BoxShape, BgColor [X11Color Gray]]
+cGraphLabelNodes (n,'_':'l':'_':l) = [toLabel l, BgColor [toWColor Gray], style dashed, style filled]
+--cGraphLabelNodes (n,'_':'l':'_':l) = [toLabel l, BgColor [X11Color Gray], style dashed, style filled]
+cGraphLabelNodes (n,_:_:_:"OR") = [toLabel "OR", Shape BoxShape, BgColor [toWColor Gray]]
+--cGraphLabelNodes (n,_:_:_:"OR") = [toLabel "OR", Shape BoxShape, BgColor [X11Color Gray]]
 -- I assume that any description that starts with \\ is a LaTeX description
-cGraphLabelNodes (n,(_:_:_:l@('\\':_))) = [toLabel l, BgColor [X11Color Yellow], UnknownAttribute (T.pack "texmode") (T.pack "math")]
+cGraphLabelNodes (n,(_:_:_:l@('\\':_))) = [toLabel l, BgColor [toWColor Yellow], UnknownAttribute (T.pack "texmode") (T.pack "math")]
+--cGraphLabelNodes (n,(_:_:_:l@('\\':_))) = [toLabel l, BgColor [X11Color Yellow], UnknownAttribute (T.pack "texmode") (T.pack "math")]
 cGraphLabelNodes (n,l) = [toLabel (drop 3 l)] -- TODO: use color to identify how these were triggered, Color [X11Color Red]]
 
 
