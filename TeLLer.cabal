@@ -8,6 +8,10 @@ Maintainer:          joao@joaoff.com
 Build-Type:          Simple
 Cabal-Version:       >= 1.2
 
+Flag readline
+  Description: Use Readline
+  Default: True
+
 Executable TeLLer
   Main-is:           Main.hs
   hs-source-dirs:    src/ tests/
@@ -33,10 +37,15 @@ Executable TeLLer
     QuickCheck >= 2 && < 3,
     directory,
     mtl,
-    readline,
     graphviz,
     fgl,
     text
+
+  if flag(readline)
+    Build-Depends:
+     readline
+
+    CPP-Options: -D__USE_READLINE__
 
 Executable CelfToGraph
   Main-is:           CelfToGraph.hs
@@ -54,10 +63,15 @@ Executable CelfToGraph
     QuickCheck >= 2 && < 3,
     directory,
     mtl,
-    readline,
     graphviz,
     fgl,
     text,
     cmdargs,
     process
+
+  if flag(readline)
+    Build-Depends:
+     readline
+
+    CPP-Options: -D__USE_READLINE__
 

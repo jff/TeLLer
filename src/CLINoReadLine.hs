@@ -1,7 +1,7 @@
 -- | The module 'CLI' defines how to interact with the user in a command-line interface.
 --   See also the module 'UserIO'.
 
-module CLI (tellerPrintLn,
+module CLINoReadline (tellerPrintLn,
             tellerPrint,
             tellerWarning,
             tellerDebug,
@@ -18,7 +18,7 @@ module CLI (tellerPrintLn,
 where
 
 import System.IO (hFlush, stdout)
-import System.Console.Readline (readline, addHistory)
+--import System.Console.Readline (readline, addHistory)
 import System.Random
 
 import Syntax (Term)
@@ -73,18 +73,29 @@ printListOfActions l = do
 ----------------------
 -- Input functions --
 ----------------------
-prompt = readline
+prompt :: String -> IO (Maybe String)
+prompt s = do
+  _flushStr s
+  answer <- getLine
+  return (Just answer)
+--  case answer of
+--    Nothing -> return Nothing
+--    Just line -> return (Just line)
+
+-- Do nothing
+addHistory :: String -> IO ()
+addHistory s = return ()
 
 -- ask user for string
 -- TODO: Improve reliability; tabs/auto-complete (readline), etc.
 readStringFromUser :: String -> IO String
 readStringFromUser query = do
   _flushStr query
-  answer <- readline ""
-  case answer of
-    Nothing -> return ""
-    Just line -> return line
-
+  answer <- getLine
+  return answer
+--  case answer of
+--    Nothing -> return ""
+--    Just line -> return line
 
 readFileNameFromUser :: String -> IO FilePath
 readFileNameFromUser query = do

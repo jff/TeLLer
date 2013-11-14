@@ -9,7 +9,6 @@ import Data.GraphViz (runGraphviz, graphToDot,GraphvizOutput(..), isGraphvizInst
 
 import System.IO (hPutStrLn, stderr, stdin, openFile, IOMode(..), hClose, hGetContents)
 import System.Directory (doesFileExist, doesDirectoryExist, createDirectory, removeDirectoryRecursive)
-import System.Console.Readline (readline, addHistory)
 import System.Process (readProcessWithExitCode)
 import System.Exit
 
@@ -27,7 +26,7 @@ import CelfToGraphConf
 import Syntax
 import Parser 
 import Term (detensor, deWith)
-import CLI
+import UserIO
 import Printer
 import CausalityGraph hiding (getActionName)
 import CausalityGraphQueries
@@ -340,7 +339,7 @@ main = do
 mainLoop :: CStateIO CState
 mainLoop = do
   state <- get
-  comm <- lift $ readline "Command [l, r, stats, link, exists, w, q, ?]: "
+  comm <- lift $ prompt "Command [l, r, stats, link, exists, w, q, ?]: "
   lift $ tellerPrint "\n"
   case comm of
     Nothing -> lift $ putStrLn goodbye_msg >> return state

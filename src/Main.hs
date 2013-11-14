@@ -3,7 +3,6 @@ module Main where
 import Control.Monad.State (lift, evalStateT, get, gets, put, modify, when)
 import System.Environment (getArgs)
 import System.Directory (doesFileExist)
-import System.Console.Readline (readline, addHistory)
 import Data.Version (showVersion)
 import Data.List (findIndices)
 
@@ -46,7 +45,7 @@ mainLoop = do
   state <- get
   let inDebugMode = debugMode state
   when inDebugMode $ lift $ printState state 
-  comm <- lift $ readline "Command [acd+-glpsxqr?]: "
+  comm <- lift $ prompt "Command [acd+-glpsxqr?]: "
   lift $ tellerPrint "\n"
   case comm of
     Nothing -> lift $ tellerPrintLn goodbye_msg >> return state
