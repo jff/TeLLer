@@ -93,6 +93,7 @@ celfOutputParser = do
     sepEndBy (try parseType) (symbol "\n") -- parse types, whilst possible
     actions <- sepEndBy (try parseAction) (symbol "\n")
     init <- parseInit
+    optional (string "Query" >> manyTill anyChar (try (string ".\n")))
     solutions <- parseSolutions
     return (Celf init (Map.fromList actions) solutions)
 
