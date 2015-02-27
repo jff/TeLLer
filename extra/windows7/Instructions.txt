@@ -1,0 +1,10 @@
+1. Install GraphViz (http://www.graphviz.org/Download_windows.php)
+2. Install SMLNJ (http://smlnj.cs.uchicago.edu/dist/working/110.77/index.html)
+3. Unzip extra/celf-2.9.2.zip. We refer to the newly created directory as CELF_DIR
+4. Compile celf
+	4.1. In the directory CELF_DIR run PATH_TO_SMLNJ\sml.bat < main-export.sml
+	4.2. In extra/windows7/celf.bat, change "D:\local\code\SMLNJ" to the path where SMLNJ is installed
+		 and "D:\local\code\TeLLeR\local\celf" to CELF_DIR
+	4.3. Copy extra/windows7/celf.bat to CELF_DIR
+5. Change celf_cmd in CelfToGraphConf.hs to "CELF_DIR\\celf.bat" (e.g. "D:\\local\\code\\TeLLeR\\local\\celf\\celf.bat")
+6. Recompile CelfToGraph (cabal build)
