@@ -8,12 +8,12 @@ module UserIO (
 #if defined(__USE_READLINE__)
     module CLI
 #else
-    module CLINoReadline
+    module CLINoReadLine
 #endif
 ) where
 
 #if defined(__USE_READLINE__)
     import CLI
 #else
-    import CLINoReadline
+    import CLINoReadLine
 #endif

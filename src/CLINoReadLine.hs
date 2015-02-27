@@ -1,7 +1,7 @@
 -- | The module 'CLI' defines how to interact with the user in a command-line interface.
 --   See also the module 'UserIO'.
 
-module CLINoReadline (tellerPrintLn,
+module CLINoReadLine (tellerPrintLn,
             tellerPrint,
             tellerWarning,
             tellerDebug,
