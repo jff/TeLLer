@@ -3,7 +3,7 @@
 module Main where
 
 -- Import GraphViz to generate graphs
-import Data.Graph.Inductive --(Gr, mkGraph, equal)
+import Data.Graph.Inductive -- (equal, Gr, labNodes) --(Gr, mkGraph, equal)
 import Data.Graph.Inductive.Query.BFS (level)
 import Data.GraphViz (runGraphviz, graphToDot,GraphvizOutput(..), isGraphvizInstalled)
 
@@ -201,6 +201,8 @@ showStats = do
     if(allDifferent) then lift $ tellerPrintLn $ "All the traces are different."
                      else lift $ tellerPrintLn $ "Not all traces are different: " ++ show indicesDuplicates 
 
+--TODO: FIXME! Graph.Inductive now has an Eq definition; make sure it is okay...
+{--
 instance (Eq a, Ord a, Eq b) => Eq (Gr a b) where
     g1 == g2 = g1 `myEquals` g2
      where
@@ -218,6 +220,7 @@ instance (Eq a, Ord a, Eq b) => Eq (Gr a b) where
         getNodeLabel g nodeid =
             let maybeName = lookup nodeid (labNodes g)
             in  fromJust maybeName
+--}
 
 
 -- | 'writeGraphsToDir' writes all graphs to the directory given
