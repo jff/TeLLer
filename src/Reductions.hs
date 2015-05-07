@@ -126,8 +126,29 @@ chooseActionToFocusOn :: [Term] -> ProverStateIO ()
 chooseActionToFocusOn [] = return ()
 chooseActionToFocusOn l = do
     lift $ printListOfActions l
-    let sizeList = length l
+
+    -- JFF: Cindy wants to be able to print the state and to add new resources at this point
+    -- TODO: refactor the code...
+    
+    lift $ tellerPrintLn "p) Print environment"
+    lift $ tellerPrintLn "+) Add resources (e.g. +A A-@B A-@C)"
     option <- lift $ getLine   -- TODO CHANGE FOR READLINE
+
+    -- user selects printing option
+    when ((head option) == 'p') $ do
+        state <- get
+        lift (tellerPrintLn (showState state)) 
+    -- TODO: something weird is happening with IO (possibly related with Readline): p is being read
+    -- twice!
+
+    when ((head option) == '+') $ do
+        changeEnvWith addToEnv (drop 1 option)
+
+    -- Adding new actions can add new enabled actions!
+    context <- gets env
+    let l = listEnabledActions context 
+    let sizeList = length l 
+
     if (isValidActionChoice option sizeList) then 
      do
         let index = fst $ head (reads option :: [(Int, String)])
@@ -152,7 +173,7 @@ chooseActionToFocusOn l = do
         put $ state { env = newEnv, unfocused = unFocus } 
         return ()
      else do 
-        lift $ tellerWarning "Invalid Choice. Try again!"
+        lift $ tellerWarning $ "Choose an action from 0 to " ++ (show (sizeList-1) ++ " to proceed!")
         chooseActionToFocusOn l
 
    
