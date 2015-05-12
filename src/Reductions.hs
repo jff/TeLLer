@@ -104,7 +104,7 @@ reduceStateIO ts = do
     -- If there are several available actions, let the user choose which one to
     -- reduce first
     -- TODO: and you are not focusing...
-    when ((length enabledActions)>1) $ chooseActionToFocusOn enabledActions
+    when ((length enabledActions)>1) $ chooseActionToFocusOn enabledActions True
     
     -- chooseActionToFocusOn changes the state, so let us get a new copy of the environment
     -- TODO, FIXME: This should improve. This style leads to programs difficult to debug!
@@ -122,16 +122,17 @@ reduceStateIO ts = do
 
 
 -- split the next functions into IO (into CLI) + State
-chooseActionToFocusOn :: [Term] -> ProverStateIO ()
-chooseActionToFocusOn [] = return ()
-chooseActionToFocusOn l = do
-    lift $ printListOfActions l
+-- Second parameter: True if running for the first time or if list of actions changed
+chooseActionToFocusOn :: [Term] -> Bool -> ProverStateIO ()
+chooseActionToFocusOn [] _ = return ()
+chooseActionToFocusOn l  printListActions = do
+    when (printListActions) $ lift $ printListOfActions l
 
     -- JFF: Cindy wants to be able to print the state and to add new resources at this point
     -- TODO: refactor the code...
     
-    lift $ tellerPrintLn "p) Print environment"
-    lift $ tellerPrintLn "+) Add resources (e.g. +A A-@B A-@C)"
+    when (printListActions) $ lift $ tellerPrintLn "p) Print environment"
+    when (printListActions) $ lift $ tellerPrintLn "+) Add resources (e.g. +A A-@B A-@C)"
     option <- lift $ getLine   -- TODO CHANGE FOR READLINE
 
     -- user selects printing option
@@ -146,6 +147,7 @@ chooseActionToFocusOn l = do
 
     -- Adding new actions can add new enabled actions!
     context <- gets env
+    let initialListActions = l
     let l = listEnabledActions context 
     let sizeList = length l 
 
@@ -174,7 +176,7 @@ chooseActionToFocusOn l = do
         return ()
      else do 
         lift $ tellerWarning $ "Choose an action from 0 to " ++ (show (sizeList-1) ++ " to proceed!")
-        chooseActionToFocusOn l
+        chooseActionToFocusOn l (l/=initialListActions)
 
    
 isValidActionChoice :: String -> Int -> Bool
@@ -195,7 +197,7 @@ tryReductionsStateIO (f:fs) t = do
     -- If we are focusing, allow the choice of actions when there are several available
     gran <- gets granularity
     fred <- gets focusedReductions
-    when ((fred<gran) && (length enabledActions)>1) $ chooseActionToFocusOn enabledActions
+    when ((fred<gran) && (length enabledActions)>1) $ chooseActionToFocusOn enabledActions True
 
     newEnv <- gets env
     tryReductionsStateIO fs newEnv
