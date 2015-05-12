@@ -39,7 +39,7 @@ removeProductGiving' f ((:-@:) a b actionDesc) ts
         state <- get
 
         -- Show message
-        lift $ reduceMessage a b
+        lift $ reduceMessage a b actionDesc
         g <- gets granularity
         fr <- gets focusedReductions
 
@@ -231,11 +231,12 @@ myRemoveFunction atoms env =
         else Nothing
 
 -- TODO: change this to CLI?
-reduceMessage :: Term -> Term -> IO ()
---reduceMessage a b = tellerWarning $ concat ["reducing: ",   showTerm (a :-@: b),
-reduceMessage a b = tellerWarning $ concat ["reducing: ",   showTerm ((:-@:) a b Nothing),
-                                            ", removing: ", showTerm a,
-                                            ", adding: ",   showTerm b]
+-- If action is named, shows the name; otherwise it shows reduction
+reduceMessage :: Term -> Term -> Maybe String -> IO ()
+reduceMessage a b Nothing = tellerWarning $ concat ["reducing: ",   showTerm ((:-@:) a b Nothing),
+                                                    ", removing: ", showTerm a,
+                                                    ", adding: ",   showTerm b]
+reduceMessage a b (Just name) = tellerWarning $ concat ["Action performed: ", name] 
 
 lollyTensorWarning :: IO (Maybe a)
 lollyTensorWarning = do 
