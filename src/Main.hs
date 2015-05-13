@@ -56,6 +56,26 @@ mainLoop = do
             -- Toggle debug mode.
             ('a':_) -> toggleTellAllStories >> mainLoop
 
+
+            -- List of choices
+            "choicepoints" -> do
+                cpoints <- gets choicePoints
+                let l = map (\(n,f,s,t) -> (n,f,s)) cpoints
+                if(null l) then lift (tellerPrintLn "No choice points to show!") >> mainLoop
+                           else lift (tellerPrintLn (show l)) >> mainLoop
+
+            -- Go to choice
+            ('g':'o':'t':'o':' ':l) -> do
+                let index = fst $ head (reads l :: [(Int,String)])
+                cpoints <- gets choicePoints
+                let npoints = length cpoints
+                let newState = (\(n,f,s,t)->t) $ cpoints!!(npoints-1-index)
+                put newState 
+                mainLoop
+
+
+
+
             -- Causality graph
             ['c']   -> do lift $ tellerWarning $ "The command c requires one argument.\
                                                 \ Example: 'c mygraph.jpg' saves the causality graph to the file mygraph.jpg"

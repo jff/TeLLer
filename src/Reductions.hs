@@ -159,6 +159,12 @@ chooseActionToFocusOn l  printListActions = do
         let newEnv = chosenAction: (env (state) \\ l)
         let unFocus = (unfocused state) ++ (l \\ [chosenAction])
 
+        -- There was a choice, so add this state to choicePoints
+        state <- get
+        let lastActionName = (\(f,s,t) -> t) $ last $ actionTrace state 
+        let currentChoicePoints = choicePoints state
+        put (state {choicePoints = (length currentChoicePoints, lastActionName, map showAction l, state): currentChoicePoints})
+
         -- Saved states
         tellAllStories <- gets tellAllStories
         when tellAllStories $ do

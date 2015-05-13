@@ -7,7 +7,7 @@ import Data.Maybe (fromMaybe)
 
 import ProverState
 import Syntax 
-import Printer (showTerm)
+import Printer (showTerm, showAction)
 import Term (detensor, linearizeTensorProducts, isSimple, isEnabledAction)
 import UserIO (choose, chooseRandom, tellerWarning, tellerDebug)
 import CGraph (getResourceNodeList, partitionResourceNodeList)
@@ -106,6 +106,14 @@ reduceWithStateIO (term@(a :&: b), ts)
  | isEnabledAction ts term =
     do 
        t <- lift $ choose (term:ts) a b  -- ask the user what action to choose
+
+       -- There was a choice, so add this state to choicePoints
+       state <- get
+       let lastActionName = (\(f,s,t) -> t) $ last $ actionTrace state 
+       let currentChoicePoints = choicePoints state
+       put (state {choicePoints = (length currentChoicePoints, lastActionName, map showAction [a,b], state): currentChoicePoints})
+
+
        savedState <- get
        let alternative = savedState {env = ([a,b]\\[t])++ts }
        modify (changeEnvTo (t:ts))

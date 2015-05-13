@@ -51,3 +51,9 @@ showTerms (x:xs) = showTerm x ++ ".\n" ++ showTerms xs
 showsTerms []     = id
 showsTerms (x:[]) = showsTerm 0 x . showString "."
 showsTerms (x:xs) = showsTerm 0 x . showString ".\n" . showsTerms xs
+
+
+
+-- showAction is defined only on actions
+showAction ((:-@:) l r (Just desc)) = desc
+showAction ((:-@:) l r Nothing) = showTerm $ ((:-@:) l r Nothing)

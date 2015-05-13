@@ -57,6 +57,12 @@ data ProverState = ProverState
       totalReductions :: Int,     -- ^ The field 'totalReductions' is a counter for the total number of reductions performed so far.
       btTraces :: [Trace],
       btStack :: [ProverState],
+
+      choicePoints :: [(Int, String, [String], ProverState)],  -- ^ The field 'choicePoints' collects all the points where a choice was made. 
+                                                        -- The first element in the pair is the index in the list (redundant, but helpful)
+                                                        -- The second element in the pair is the action that was executed just before the choice (taken from action trace).
+                                                        -- The third element is the list of choices available at that point.
+
       tellAllStories :: Bool,           -- ^ The field 'tellAllStories' defines whether TeLLer backtracks and tells all the possible stories
       debugMode :: Bool           -- ^ The field 'debugMode' defines whether TeLLer runs in debug mode.
     }
@@ -73,7 +79,8 @@ initialState = ProverState { env = [],
                              tellAllStories = False,
                              debugMode = False,
                              btStack = [],
-                             btTraces = []
+                             btTraces = [],
+                             choicePoints = []
                             }
 
 -- | The Monad Transformer that stacks our state with IO
