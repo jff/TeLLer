@@ -9,7 +9,7 @@ import ProverState
 import Syntax 
 import Printer (showTerm, showAction)
 import Term (detensor, linearizeTensorProducts, isSimple, isEnabledAction)
-import UserIO (choose, chooseRandom, tellerWarning, tellerDebug)
+import UserIO (choose, chooseRandom, tellerWarning, tellerDebug, readStringFromUser)
 import CGraph (getResourceNodeList, partitionResourceNodeList)
 import Util (third)
 
@@ -244,7 +244,10 @@ reduceMessage :: Term -> Term -> Maybe String -> IO ()
 reduceMessage a b Nothing = tellerWarning $ concat ["reducing: ",   showTerm ((:-@:) a b Nothing),
                                                     ", removing: ", showTerm a,
                                                     ", adding: ",   showTerm b]
-reduceMessage a b (Just name) = tellerWarning $ concat ["Action performed: ", name] 
+reduceMessage a b (Just name) = do 
+    tellerWarning (concat ["Action performed: ", name])
+    readStringFromUser "" -- TODO: this was requested by Cindy, but it's not great when interacting with CLI
+    return ()
 
 lollyTensorWarning :: IO (Maybe a)
 lollyTensorWarning = do 
