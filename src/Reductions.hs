@@ -133,6 +133,8 @@ chooseActionToFocusOn l  printListActions = do
     
     when (printListActions) $ lift $ tellerPrintLn "p) Print environment"
     when (printListActions) $ lift $ tellerPrintLn "+) Add resources (e.g. +A A-@B A-@C)"
+    when (printListActions) $ lift $ tellerPrintLn "choicepoints) List choice points"
+    when (printListActions) $ lift $ tellerPrintLn "goto n) Go to choice point n"
     option <- lift $ getLine   -- TODO CHANGE FOR READLINE
 
     -- user selects printing option
@@ -144,6 +146,20 @@ chooseActionToFocusOn l  printListActions = do
 
     when ((head option) == '+') $ do
         changeEnvWith addToEnv (drop 1 option)
+
+    when (option == "choicepoints") $ do
+        cpoints <- gets choicePoints
+        let l = map (\(n,f,s,t) -> (n,f,s)) cpoints
+        if(null l) then lift (tellerPrintLn "No choice points to show!") 
+                   else lift (tellerPrintLn (show l)) 
+
+    when ((take 5 option) == "goto ") $ do
+        let index = fst $ head (reads (drop 5 option) :: [(Int,String)])
+        cpoints <- gets choicePoints
+        let npoints = length cpoints
+        let newState = (\(n,f,s,t)->t) $ cpoints!!(npoints-1-index)
+        put newState 
+
 
     -- Adding new actions can add new enabled actions!
     context <- gets env
