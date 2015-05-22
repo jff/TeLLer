@@ -132,7 +132,7 @@ chooseActionToFocusOn l  printListActions = do
     -- TODO: refactor the code...
     
     when (printListActions) $ lift $ tellerPrintLn "p) Print environment"
-    when (printListActions) $ lift $ tellerPrintLn "+) Add resources (e.g. +A A-@B A-@C)"
+    when (printListActions) $ lift $ tellerPrintLn "+-) Add/Remove resources (e.g. +A A-@B A-@C)"
     when (printListActions) $ lift $ tellerPrintLn "choicepoints) List choice points"
     when (printListActions) $ lift $ tellerPrintLn "goto n) Go to choice point n"
     option <- lift $ getLine   -- TODO CHANGE FOR READLINE
@@ -146,6 +146,9 @@ chooseActionToFocusOn l  printListActions = do
 
     when ((head option) == '+') $ do
         changeEnvWith addToEnv (drop 1 option)
+
+    when ((head option) == '-') $ do
+        changeEnvWith removeFromEnv (drop 1 option)
 
     when (option == "choicepoints") $ do
         cpoints <- gets choicePoints
