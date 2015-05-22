@@ -137,12 +137,17 @@ removeBrackets = filter (not . (\c -> c `elem` bracketList))
 
 parseSolutions :: Parser [Solution]
 parseSolutions = do
-    sepEndBy (try parseNoSolution <|> try parseSolution) (symbol "\n")
+    sepEndBy (try parseNoSolution <|> try parseSolution <|> try parseEmptyIteration) (symbol "\n")
 
 parseNoSolution :: Parser Solution
 parseNoSolution = do
     optional (string "Iteration " >> integer)
     string "No solutions found."
+    return $ Lambda "" []
+
+parseEmptyIteration :: Parser Solution
+parseEmptyIteration = do
+    string "Iteration " >> integer
     return $ Lambda "" []
 
 parseSolution :: Parser Solution

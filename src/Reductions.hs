@@ -177,7 +177,8 @@ chooseActionToFocusOn l  printListActions = do
 
         -- There was a choice, so add this state to choicePoints
         state <- get
-        let lastActionName = (\(f,s,t) -> t) $ last $ actionTrace state 
+        let lastActionName = (\(f,s,t) -> t) $ (\l -> if (null l) then (0,[],"Beginning") else last l) $ filter (\(_,_,nm)->(take 7 nm) /= (take 7 "\\emptyset")) $ actionTrace state 
+        lift $ tellerPrintLn $ "DEBUG: " ++ show (actionTrace state)
         let currentChoicePoints = choicePoints state
         put (state {choicePoints = (length currentChoicePoints, lastActionName, map showAction l, state): currentChoicePoints})
 
