@@ -93,7 +93,6 @@ removeProductGiving' f ((:-@:) a b actionDesc) ts
         -- TODO: use modify
         state <- get
         put $ state {originOfResources = newMap}
-        lift $ tellerWarning "TEST"
         lift $ tellerWarning "p) Print environment"
         option <- lift $ getLine   -- TODO CHANGE FOR READLINE
         when ((head option) == 'p') $ do
