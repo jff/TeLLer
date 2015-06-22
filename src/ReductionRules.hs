@@ -93,6 +93,17 @@ removeProductGiving' f ((:-@:) a b actionDesc) ts
         -- TODO: use modify
         state <- get
         put $ state {originOfResources = newMap}
+        lift $ tellerWarning "TEST"
+        lift $ tellerWarning "p) Print environment"
+        option <- lift $ getLine   -- TODO CHANGE FOR READLINE
+        when ((head option) == 'p') $ do
+            state <- get
+            lift (tellerWarning (showState state)) 
+    -- TODO: something weird is happening with IO (possibly related with Readline): p is being read
+    -- twice!
+
+
+
         return $ Just ((f ts') ++ actionsToFocus)
 
   | otherwise = lift $ lollyTensorWarning
